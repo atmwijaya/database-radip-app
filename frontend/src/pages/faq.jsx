@@ -22,7 +22,11 @@ const FAQItem = ({ question, answer, isOpen, onToggle }) => {
         </div>
       </button>
       
-      {isOpen && (
+      <div
+        className={`transition-all duration-300 ease-in-out overflow-hidden ${
+          isOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
+        }`}
+      >
         <div className="px-4 sm:px-6 pb-4 sm:pb-5">
           <div className="pt-2 border-t border-gray-100">
             <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
@@ -30,10 +34,19 @@ const FAQItem = ({ question, answer, isOpen, onToggle }) => {
             </p>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
+
+// Fungsi untuk handle klik tombol Hubungi Kami
+  const handleContactClick = () => {
+    // Ganti dengan nomor WhatsApp yang sesuai (format: kode negara + nomor tanpa tanda + atau 0)
+    const phoneNumber = '6281215452982'; 
+    const message = 'Halo, saya memiliki pertanyaan tentang Database Anggota Racana Diponegoro';
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
 
 // Main FAQ Component
 const FAQ = () => {
@@ -52,7 +65,7 @@ const FAQ = () => {
   const faqData = [
     {
       question: "Apa itu Database Anggota Racana Diponegoro?",
-      answer: "Database Anggota Racana Diponegoro adalah sistem informasi yang berisi data lengkap seluruh anggota Racana Diponegoro, termasuk informasi pribadi, akademik, dan kegiatan kepanduan. Database ini dibuat untuk memudahkan pencarian dan pengelolaan data anggota."
+      answer: "Database Anggota Racana Diponegoro adalah sistem informasi yang berisi data lengkap seluruh anggota Racana Diponegoro. Database ini dibuat untuk memudahkan pencarian dan pengelolaan data anggota."
     },
     {
       question: "Bagaimana cara mencari data anggota?",
@@ -64,7 +77,7 @@ const FAQ = () => {
     },
     {
       question: "Bagaimana jika data saya tidak ditemukan atau tidak akurat?",
-      answer: "Jika data Anda tidak ditemukan atau terdapat kesalahan informasi, silakan menghubungi pengurus Racana Diponegoro melalui kontak resmi organisasi. Tim admin akan membantu memperbarui atau menambahkan data Anda ke dalam sistem."
+      answer: "Jika data Anda tidak ditemukan atau terdapat kesalahan informasi, silakan menghubungi pengurus Dewan Racana Diponegoro melalui kontak resmi organisasi. Tim admin akan membantu memperbarui atau menambahkan data Anda ke dalam sistem."
     },
     {
       question: "Apakah data pribadi saya aman dalam database ini?",
@@ -126,7 +139,7 @@ const FAQ = () => {
               <p className="text-sm sm:text-base text-gray-600 mb-4">
                 Jika Anda tidak menemukan jawaban yang Anda cari, jangan ragu untuk menghubungi kami.
               </p>
-              <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 sm:py-3 sm:px-6 rounded-lg transition-colors text-sm sm:text-base">
+              <button onClick={handleContactClick} className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 sm:py-3 sm:px-6 rounded-lg transition-colors text-sm sm:text-base">
                 Hubungi Kami
               </button>
             </div>

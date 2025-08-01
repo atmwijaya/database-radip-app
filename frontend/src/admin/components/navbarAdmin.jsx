@@ -10,7 +10,7 @@ const NavbarAdmin = () => {
   const navItems = [
     { path: '/admin', name: 'Beranda' },
     { path: '/admin/database-anggota', name: 'Database' },
-    {}
+    // Add more items as needed, but make sure each has path and name
   ];
 
   const handleLogout = () => {

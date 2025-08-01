@@ -4,12 +4,18 @@ import Footer from '../../components/footer';
 
 // Data fakultas dan jurusan
 const fakultasJurusan = {
-  'Teknik': ['Informatika', 'Sipil', 'Elektro', 'Mesin', 'Arsitektur'],
-  'Ekonomi': ['Manajemen', 'Akuntansi', 'Ekonomi Pembangunan'],
-  'Hukum': ['Ilmu Hukum'],
-  'Kedokteran': ['Pendidikan Dokter', 'Kedokteran Gigi'],
-  'Pertanian': ['Agroteknologi', 'Agribisnis'],
-  'Ilmu Sosial dan Politik': ['Ilmu Komunikasi', 'Ilmu Politik', 'Sosiologi']
+  'Hukum': ['Hukum'],
+  'Ekonomi': ['Akuntansi', 'Ilmu Ekonomi', 'Manajemen', 'Ekonomi Islam', 'Bisnis Digital'],
+  'Teknik': ['Teknik Sipil', 'Arsitektur', 'Teknik Kimia', 'Teknik Mesin', 'Teknik Elektro', 'Perencanaan Wilayah dan Kota', 'Teknik Industri', 'Teknik Lingkungan', 'Teknik Perkapalan', 'Teknik Geologi', 'Teknik Geodesi', 'Teknik Komputer'],
+  'Kedokteran': ['Kedokteran', 'Ilmu Gizi', 'Keperawatan', 'Farmasi', 'Kedokteran Gigi'],
+  'Peternakan dan Pertanian': ['Peternakan', 'Agribisnis', 'Agroteknologi', 'Teknologi Pangan'],
+  'Ilmu Budaya' : ['Sastra Inggris', 'Sastra Indonesia', 'Sejarah', 'Ilmu Perpustakaan', 'Antropologi Sosial', 'Bahasa dan Kebudayaan Jepang'],
+  'Ilmu Sosial dan Politik': ['Administrasi Publik', 'Administrasi Bisnis', 'Ilmu Pemerintahan', 'Ilmu Komunikasi', 'Hubungan Internasional'],
+  'Sains dan Matematika': ['Matematika', 'Biologi', 'Kimia', 'Fisika', 'Statistika', 'Bioteknologi', 'Informatika'],
+  'Kesehatan Masyarakat' : ['Kesehatan Masyarakat', 'Kesehatan dan Keselamatan Kerja'],
+  'Perikanan dan Ilmu Kelautan' : ['Akuakultur', 'Ilmu Kelautan', 'Manajemen Sumber Daya Perairan', 'Oseanografi', 'Perikanan Tangkap', 'Teknologi Hasil Perikanan'],
+  'Psikologi': ['Psikologi'],
+  'Vokasi' : ['Teknik Infrastruktur Sipil dan Perancanaan Arsitektur', 'Perencanaan Tata Ruang dan Pertanahan', 'Teknologi Rekayasa Kimia Industri', 'Teknologi Rekayasa Otomasi', 'Teknologi Rekayasa Konstruksi Perkapalan', 'Teknik Listrik Industri', 'Akuntansi Perpajakan', 'Manajemen dan Administrasi Logistik', 'Bahasa Terapan Asing', 'Informasi dan Hubungan Masyarakat']
 };
 
 const DatabaseAdmin = () => {
@@ -23,9 +29,8 @@ const DatabaseAdmin = () => {
   const [dataToDelete, setDataToDelete] = useState(null);
   const [jurusanOptions, setJurusanOptions] = useState([]);
   const [error, setError] = useState(null);
-  const API_BASE_URL = 'http://localhost:5000';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-  // Form state
   const [formData, setFormData] = useState({
     nama: '',
     noInduk: '',
@@ -33,7 +38,8 @@ const DatabaseAdmin = () => {
     fakultas: '',
     jurusan: '',
     angkatan: '',
-    ttl: '',
+    tempatLahir: '',
+    tanggalLahir: '',
     pandega: ''
   });
 
@@ -43,7 +49,8 @@ const DatabaseAdmin = () => {
     fakultas: '',
     jurusan: '',
     angkatan: '',
-    ttl: ''
+    tempatLahir: '',
+    tanggalLahir: ''
   });
 
   // Fetch data from backend
@@ -117,13 +124,11 @@ const DatabaseAdmin = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     
-    // Validasi NIM harus angka dan 14 digit
     if (name === 'nim') {
       if (value.length > 14) return;
       if (value && !/^\d+$/.test(value)) return;
     }
     
-    // Validasi nama harus huruf
     if (name === 'nama') {
       if (!/^[a-zA-Z\s]*$/.test(value)) return;
     }
@@ -133,7 +138,6 @@ const DatabaseAdmin = () => {
       [name]: value
     });
     
-    // Reset error saat mengisi
     setErrors({
       ...errors,
       [name]: ''
@@ -146,10 +150,9 @@ const DatabaseAdmin = () => {
     setFormData({
       ...formData,
       fakultas,
-      jurusan: '' // Reset jurusan saat fakultas berubah
+      jurusan: ''
     });
     
-    // Set opsi jurusan berdasarkan fakultas
     setJurusanOptions(fakultas ? fakultasJurusan[fakultas] || [] : []);
   };
 
@@ -162,7 +165,8 @@ const DatabaseAdmin = () => {
       fakultas: '',
       jurusan: '',
       angkatan: '',
-      ttl: ''
+      tempatLahir: '',
+      tanggalLahir: ''
     };
     
     if (!formData.nama.trim()) {
@@ -193,8 +197,13 @@ const DatabaseAdmin = () => {
       valid = false;
     }
     
-    if (!formData.ttl) {
-      newErrors.ttl = 'TTL wajib diisi';
+    if (!formData.tempatLahir) {
+      newErrors.tempatLahir = 'Tempat lahir wajib diisi';
+      valid = false;
+    }
+    
+    if (!formData.tanggalLahir) {
+      newErrors.tanggalLahir = 'Tanggal lahir wajib diisi';
       valid = false;
     }
     
@@ -212,43 +221,36 @@ const DatabaseAdmin = () => {
       let response;
       const token = localStorage.getItem('token');
       
+      const ttl = `${formData.tempatLahir}, ${formData.tanggalLahir}`;
+      
+      const memberData = {
+        nama: formData.nama,
+        noInduk: formData.noInduk || '-',
+        nim: formData.nim,
+        fakultas: formData.fakultas,
+        jurusan: formData.jurusan,
+        angkatan: formData.angkatan,
+        ttl,
+        pandega: formData.pandega || '-'
+      };
+
       if (editData) {
-        // Update existing data
         response = await fetch(`${API_BASE_URL}/api/database/${editData._id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({
-            nama: formData.nama,
-            noInduk: formData.noInduk || '-',
-            nim: formData.nim,
-            fakultas: formData.fakultas,
-            jurusan: formData.jurusan,
-            angkatan: formData.angkatan,
-            ttl: formData.ttl,
-            pandega: formData.pandega || '-'
-          })
+          body: JSON.stringify(memberData)
         });
       } else {
-        // Add new data
         response = await fetch(`${API_BASE_URL}/api/database`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({
-            nama: formData.nama,
-            noInduk: formData.noInduk || '-',
-            nim: formData.nim,
-            fakultas: formData.fakultas,
-            jurusan: formData.jurusan,
-            angkatan: formData.angkatan,
-            ttl: formData.ttl,
-            pandega: formData.pandega || '-'
-          })
+          body: JSON.stringify(memberData)
         });
       }
       
@@ -278,7 +280,8 @@ const DatabaseAdmin = () => {
       fakultas: '',
       jurusan: '',
       angkatan: '',
-      ttl: '',
+      tempatLahir: '',
+      tanggalLahir: '',
       pandega: ''
     });
     setJurusanOptions([]);
@@ -288,14 +291,18 @@ const DatabaseAdmin = () => {
       fakultas: '',
       jurusan: '',
       angkatan: '',
-      ttl: ''
+      tempatLahir: '',
+      tanggalLahir: ''
     });
     setError(null);
   };
 
-  // Handle edit
+  // Handle edit - split TTL into birthplace and date
   const handleEdit = (item) => {
     setEditData(item);
+    
+    const [tempatLahir = '', tanggalLahir = ''] = item.ttl.split(', ');
+    
     setFormData({
       nama: item.nama,
       noInduk: item.noInduk === '-' ? '' : item.noInduk,
@@ -303,11 +310,11 @@ const DatabaseAdmin = () => {
       fakultas: item.fakultas,
       jurusan: item.jurusan,
       angkatan: item.angkatan,
-      ttl: item.ttl,
+      tempatLahir: tempatLahir || '',
+      tanggalLahir: tanggalLahir || '',
       pandega: item.pandega === '-' ? '' : item.pandega
     });
     
-    // Set opsi jurusan berdasarkan fakultas saat edit
     setJurusanOptions(item.fakultas ? fakultasJurusan[item.fakultas] || [] : []);
     setShowAddForm(true);
   };
@@ -497,17 +504,30 @@ const DatabaseAdmin = () => {
                     {errors.angkatan && <p className="mt-1 text-sm text-red-600">{errors.angkatan}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">TTL*</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tempat Lahir*</label>
                     <input
                       type="text"
-                      name="ttl"
-                      value={formData.ttl}
+                      name="tempatLahir"
+                      value={formData.tempatLahir}
                       onChange={handleInputChange}
-                      className={`w-full p-2 border ${errors.ttl ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                      className={`w-full p-2 border ${errors.tempatLahir ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                       required
-                      placeholder="Contoh: Jakarta, 10 Jan 2000"
+                      placeholder="Contoh: Jakarta"
                     />
-                    {errors.ttl && <p className="mt-1 text-sm text-red-600">{errors.ttl}</p>}
+                    {errors.tempatLahir && <p className="mt-1 text-sm text-red-600">{errors.tempatLahir}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Lahir*</label>
+                    <input
+                      type="text"
+                      name="tanggalLahir"
+                      value={formData.tanggalLahir}
+                      onChange={handleInputChange}
+                      className={`w-full p-2 border ${errors.tanggalLahir ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                      required
+                      placeholder="Contoh: 10 Jan 2000"
+                    />
+                    {errors.tanggalLahir && <p className="mt-1 text-sm text-red-600">{errors.tanggalLahir}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nama Pandega</label>
@@ -576,115 +596,169 @@ const DatabaseAdmin = () => {
           </div>
         )}
 
-        {/* Data Table */}
-        {!loading && (
-          <div className="bg-white shadow-md rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => requestSort('no')}
-                    >
-                      No
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => requestSort('nama')}
-                    >
-                      Nama Lengkap
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => requestSort('noInduk')}
-                    >
-                      No. Induk
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => requestSort('nim')}
-                    >
-                      NIM
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Fakultas/Jurusan
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => requestSort('angkatan')}
-                    >
-                      Angkatan
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => requestSort('ttl')}
-                    >
-                      TTL
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => requestSort('pandega')}
-                    >
-                      Nama Pandega
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredData.length > 0 ? (
-                    filteredData.map((item, index) => (
-                      <tr key={item._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.nama}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.noInduk}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.nim}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.fakultas}/{item.jurusan}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.angkatan}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.ttl}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.pandega}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => handleEdit(item)}
-                            className="text-blue-600 hover:text-blue-900 mr-3"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => confirmDelete(item)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Hapus
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="9" className="px-6 py-4 text-center text-sm text-gray-500">
-                        Tidak ada data yang ditemukan
+        {/* Data Table - Desktop */}
+        <div className="hidden md:block bg-white shadow-md rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th
+                    scope="col"
+                    className="sticky left-0 z-20 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer bg-gray-50 shadow-right"
+                    onClick={() => requestSort('no')}
+                  >
+                    No
+                  </th>
+                  <th
+                    scope="col"
+                    className="sticky left-12 z-20 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 shadow-right cursor-pointer"
+                    onClick={() => requestSort('nama')}
+                  >
+                    Nama Lengkap
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => requestSort('noInduk')}
+                  >
+                    No. Induk
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => requestSort('nim')}
+                  >
+                    NIM
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Fakultas/Jurusan
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => requestSort('angkatan')}
+                  >
+                    Angkatan
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => requestSort('ttl')}
+                  >
+                    TTL
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => requestSort('pandega')}
+                  >
+                    Nama Pandega
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredData.length > 0 ? (
+                  filteredData.map((item, index) => (
+                    <tr key={item._id} className="hover:bg-gray-50">
+                      <td className="sticky left-0 z-10 px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-white shadow-right">{index + 1}</td>
+                      <td className="sticky left-12 z-10 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 bg-white shadow-right">{item.nama}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.noInduk}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.nim}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.fakultas}/{item.jurusan}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.angkatan}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.ttl}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.pandega}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() => handleEdit(item)}
+                          className="text-blue-600 hover:text-blue-900 mr-3"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => confirmDelete(item)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Hapus
+                        </button>
                       </td>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="9" className="px-6 py-4 text-center text-sm text-gray-500">
+                      Tidak ada data yang ditemukan
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
+        </div>
+
+        {/* Data Table - Mobile */}
+        <div className="md:hidden space-y-4">
+          {filteredData.length > 0 ? (
+            filteredData.map((item, index) => (
+              <div key={item._id} className="bg-white p-4 rounded-lg shadow">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium text-gray-900">{item.nama}</h3>
+                    <p className="text-sm text-gray-500">{item.nim}</p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleEdit(item)}
+                      className="text-blue-600 hover:text-blue-900"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => confirmDelete(item)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-gray-500">No. Induk</p>
+                    <p>{item.noInduk}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Fakultas/Jurusan</p>
+                    <p>{item.fakultas}/{item.jurusan}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Angkatan</p>
+                    <p>{item.angkatan}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">TTL</p>
+                    <p>{item.ttl}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Pandega</p>
+                    <p>{item.pandega}</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-4 text-sm text-gray-500">
+              Tidak ada data yang ditemukan
+            </div>
+          )}
+        </div>
       </main>
       <Footer />
     </div>
