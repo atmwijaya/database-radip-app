@@ -12,6 +12,13 @@ const LoginPage = () => {
     password: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [errorNotification, setErrorNotification] = useState({
+    show: false,
+    message: ''
+  });
+
+  // Tambahkan base URL API (sesuaikan dengan environment Anda)
+  const API_BASE_URL = 'http://localhost:5000';
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -29,8 +36,8 @@ const LoginPage = () => {
   const validateForm = () => {
     let valid = true;
     const newErrors = {
-      email: 'admin@radip.com',
-      password: 'atmawijaya'
+      email: '',
+      password: ''
     };
 
     if (!formData.email) {
@@ -53,21 +60,47 @@ const LoginPage = () => {
     return valid;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (validateForm()) {
-      setIsLoading(true);
-      // Simulate API call
-      setTimeout(() => {
-        // In a real app, you would call your authentication API here
-        console.log('Login attempt with:', formData);
-        
-        // For demo purposes, we'll just navigate to admin dashboard
-        // In real app, you would check the response from your API first
-        navigate('/admin');
-        setIsLoading(false);
-      }, 1500);
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorNotification({ show: false, message: '' });
+
+    try {
+      const { email, password } = formData;
+      
+      // Step 1: Login
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Gagal masuk");
+      }
+
+      // Store token and user data
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("admin", JSON.stringify(data.user));
+      
+      // Redirect to admin page
+      navigate('/admin');
+    } catch (error) {
+      setErrorNotification({
+        show: true,
+        message: error.message || "Terjadi kesalahan saat login"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -76,7 +109,7 @@ const LoginPage = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <img
           className="mx-auto h-16 w-auto"
-          src="./src/assets/Radip.png" // Pastikan path ini sesuai dengan struktur proyek Anda
+          src="./src/assets/Radip.png"
           alt="Logo Racana Diponegoro"
         />
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
@@ -87,6 +120,13 @@ const LoginPage = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          {/* Error Notification */}
+          {errorNotification.show && (
+            <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+              {errorNotification.message}
+            </div>
+          )}
+
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">

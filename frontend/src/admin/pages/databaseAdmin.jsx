@@ -13,33 +13,8 @@ const fakultasJurusan = {
 };
 
 const DatabaseAdmin = () => {
-  // Data dummy awal
-  const initialData = [
-    {
-      id: 1,
-      nama: 'Ahmad Budiman',
-      noInduk: 'RCN001',
-      nim: '12345678901234',
-      fakultas: 'Teknik',
-      jurusan: 'Informatika',
-      angkatan: 2025,
-      ttl: 'Jakarta, 10 Jan 2000',
-      pandega: 'Budi Santoso'
-    },
-    {
-      id: 2,
-      nama: 'Citra Dewi',
-      noInduk: '-',
-      nim: '23456789012345',
-      fakultas: 'Ekonomi',
-      jurusan: 'Manajemen',
-      angkatan: 2024,
-      ttl: 'Bandung, 15 Mar 1999',
-      pandega: '-'
-    },
-  ];
-
-  const [data, setData] = useState(initialData);
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'nama', direction: 'asc' });
   const [showAddForm, setShowAddForm] = useState(false);
@@ -47,6 +22,8 @@ const DatabaseAdmin = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [dataToDelete, setDataToDelete] = useState(null);
   const [jurusanOptions, setJurusanOptions] = useState([]);
+  const [error, setError] = useState(null);
+  const API_BASE_URL = 'http://localhost:5000';
 
   // Form state
   const [formData, setFormData] = useState({
@@ -68,6 +45,33 @@ const DatabaseAdmin = () => {
     angkatan: '',
     ttl: ''
   });
+
+  // Fetch data from backend
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/api/database`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Gagal mengambil data');
+      }
+      
+      const result = await response.json();
+      setData(result);
+      setLoading(false);
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   // Handle sort
   const requestSort = (key) => {
@@ -99,13 +103,13 @@ const DatabaseAdmin = () => {
   const filteredData = sortedData.filter((item) => {
     return (
       item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.noInduk.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.noInduk && item.noInduk.toLowerCase().includes(searchTerm.toLowerCase())) ||
       item.nim.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.fakultas.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.jurusan.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.angkatan.toString().includes(searchTerm) ||
       item.ttl.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.pandega.toLowerCase().includes(searchTerm.toLowerCase())
+      (item.pandega && item.pandega.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   });
 
@@ -199,35 +203,70 @@ const DatabaseAdmin = () => {
   };
 
   // Handle form submit (add/edit)
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!validateForm()) return;
     
-    if (editData) {
-      // Update existing data
-      const updatedData = data.map(item => 
-        item.id === editData.id ? { 
-          ...formData, 
-          id: editData.id,
-          noInduk: formData.noInduk || '-',
-          pandega: formData.pandega || '-'
-        } : item
-      );
-      setData(updatedData);
-      setEditData(null);
-    } else {
-      // Add new data
-      const newData = {
-        ...formData,
-        id: data.length > 0 ? Math.max(...data.map(item => item.id)) + 1 : 1,
-        noInduk: formData.noInduk || '-',
-        pandega: formData.pandega || '-'
-      };
-      setData([...data, newData]);
+    try {
+      let response;
+      const token = localStorage.getItem('token');
+      
+      if (editData) {
+        // Update existing data
+        response = await fetch(`${API_BASE_URL}/api/database/${editData._id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            nama: formData.nama,
+            noInduk: formData.noInduk || '-',
+            nim: formData.nim,
+            fakultas: formData.fakultas,
+            jurusan: formData.jurusan,
+            angkatan: formData.angkatan,
+            ttl: formData.ttl,
+            pandega: formData.pandega || '-'
+          })
+        });
+      } else {
+        // Add new data
+        response = await fetch(`${API_BASE_URL}/api/database`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            nama: formData.nama,
+            noInduk: formData.noInduk || '-',
+            nim: formData.nim,
+            fakultas: formData.fakultas,
+            jurusan: formData.jurusan,
+            angkatan: formData.angkatan,
+            ttl: formData.ttl,
+            pandega: formData.pandega || '-'
+          })
+        });
+      }
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Terjadi kesalahan');
+      }
+      
+      await fetchData();
+      setShowAddForm(false);
+      resetForm();
+    } catch (err) {
+      if (err.message.includes('NIM sudah terdaftar')) {
+        setErrors(prev => ({...prev, nim: 'NIM sudah terdaftar'}));
+      } else {
+        setError(err.message);
+      }
     }
-    setShowAddForm(false);
-    resetForm();
   };
 
   // Reset form
@@ -251,6 +290,7 @@ const DatabaseAdmin = () => {
       angkatan: '',
       ttl: ''
     });
+    setError(null);
   };
 
   // Handle edit
@@ -279,11 +319,27 @@ const DatabaseAdmin = () => {
   };
 
   // Handle delete
-  const handleDelete = () => {
-    const updatedData = data.filter(item => item.id !== dataToDelete.id);
-    setData(updatedData);
-    setShowDeleteModal(false);
-    setDataToDelete(null);
+  const handleDelete = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/database/${dataToDelete._id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal menghapus data');
+      }
+      
+      await fetchData();
+      setShowDeleteModal(false);
+      setDataToDelete(null);
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (
@@ -304,6 +360,13 @@ const DatabaseAdmin = () => {
             Tambah Data
           </button>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
 
         {/* Search Bar */}
         <div className="mb-6">
@@ -330,6 +393,13 @@ const DatabaseAdmin = () => {
           </div>
         </div>
 
+        {/* Loading Indicator */}
+        {loading && (
+          <div className="flex justify-center items-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        )}
+
         {/* Add/Edit Form Modal */}
         {showAddForm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -337,6 +407,11 @@ const DatabaseAdmin = () => {
               <h2 className="text-xl font-semibold mb-4">
                 {editData ? 'Edit Data Anggota' : 'Tambah Data Anggota Baru'}
               </h2>
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+                  {error}
+                </div>
+              )}
               <form onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
@@ -354,7 +429,7 @@ const DatabaseAdmin = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">No. Induk</label>
                     <input
-                      type="text"
+                      type="number"
                       name="noInduk"
                       value={formData.noInduk}
                       onChange={handleInputChange}
@@ -365,7 +440,7 @@ const DatabaseAdmin = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">NIM*</label>
                     <input
-                      type="text"
+                      type="number"
                       name="nim"
                       value={formData.nim}
                       onChange={handleInputChange}
@@ -475,9 +550,17 @@ const DatabaseAdmin = () => {
             <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
               <h3 className="text-lg font-semibold mb-4">Konfirmasi Hapus Data</h3>
               <p className="mb-6">Apakah Anda yakin ingin menghapus data {dataToDelete?.nama}?</p>
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+                  {error}
+                </div>
+              )}
               <div className="flex justify-end space-x-4">
                 <button
-                  onClick={() => setShowDeleteModal(false)}
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setError(null);
+                  }}
                   className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
                 >
                   Batal
@@ -494,114 +577,116 @@ const DatabaseAdmin = () => {
         )}
 
         {/* Data Table */}
-        <div className="bg-white shadow-md rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort('no')}
-                  >
-                    No
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort('nama')}
-                  >
-                    Nama Lengkap
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort('noInduk')}
-                  >
-                    No. Induk
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort('nim')}
-                  >
-                    NIM
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Fakultas/Jurusan
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort('angkatan')}
-                  >
-                    Angkatan
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort('ttl')}
-                  >
-                    TTL
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort('pandega')}
-                  >
-                    Nama Pandega
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredData.length > 0 ? (
-                  filteredData.map((item, index) => (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.nama}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.noInduk}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.nim}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.fakultas}/{item.jurusan}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.angkatan}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.ttl}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.pandega}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => handleEdit(item)}
-                          className="text-blue-600 hover:text-blue-900 mr-3"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => confirmDelete(item)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Hapus
-                        </button>
+        {!loading && (
+          <div className="bg-white shadow-md rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                      onClick={() => requestSort('no')}
+                    >
+                      No
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                      onClick={() => requestSort('nama')}
+                    >
+                      Nama Lengkap
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                      onClick={() => requestSort('noInduk')}
+                    >
+                      No. Induk
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                      onClick={() => requestSort('nim')}
+                    >
+                      NIM
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Fakultas/Jurusan
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                      onClick={() => requestSort('angkatan')}
+                    >
+                      Angkatan
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                      onClick={() => requestSort('ttl')}
+                    >
+                      TTL
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                      onClick={() => requestSort('pandega')}
+                    >
+                      Nama Pandega
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Aksi
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredData.length > 0 ? (
+                    filteredData.map((item, index) => (
+                      <tr key={item._id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.nama}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.noInduk}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.nim}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {item.fakultas}/{item.jurusan}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.angkatan}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.ttl}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.pandega}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => handleEdit(item)}
+                            className="text-blue-600 hover:text-blue-900 mr-3"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => confirmDelete(item)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Hapus
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="9" className="px-6 py-4 text-center text-sm text-gray-500">
+                        Tidak ada data yang ditemukan
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="9" className="px-6 py-4 text-center text-sm text-gray-500">
-                      Tidak ada data yang ditemukan
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
       </main>
-    <Footer />
+      <Footer />
     </div>
   );
 };
