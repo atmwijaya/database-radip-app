@@ -8,7 +8,7 @@ const fakultasJurusan = {
   'Ekonomi': ['Akuntansi', 'Ilmu Ekonomi', 'Manajemen', 'Ekonomi Islam', 'Bisnis Digital'],
   'Teknik': ['Teknik Sipil', 'Arsitektur', 'Teknik Kimia', 'Teknik Mesin', 'Teknik Elektro', 'Perencanaan Wilayah dan Kota', 'Teknik Industri', 'Teknik Lingkungan', 'Teknik Perkapalan', 'Teknik Geologi', 'Teknik Geodesi', 'Teknik Komputer'],
   'Kedokteran': ['Kedokteran', 'Ilmu Gizi', 'Keperawatan', 'Farmasi', 'Kedokteran Gigi'],
-  'Peternakan dan Pertanian': ['Peternakan', 'Agribisnis', 'Agroteknologi', 'Teknologi Pangan'],
+  'Peternakan dan Pertanian': ['Peternakan', 'Agribisnis', 'Agroteknologi', 'Teknologi Pangan', 'Akuakultur'],
   'Ilmu Budaya' : ['Sastra Inggris', 'Sastra Indonesia', 'Sejarah', 'Ilmu Perpustakaan', 'Antropologi Sosial', 'Bahasa dan Kebudayaan Jepang'],
   'Ilmu Sosial dan Politik': ['Administrasi Publik', 'Administrasi Bisnis', 'Ilmu Pemerintahan', 'Ilmu Komunikasi', 'Hubungan Internasional'],
   'Sains dan Matematika': ['Matematika', 'Biologi', 'Kimia', 'Fisika', 'Statistika', 'Bioteknologi', 'Informatika'],
@@ -17,6 +17,11 @@ const fakultasJurusan = {
   'Psikologi': ['Psikologi'],
   'Vokasi' : ['Teknik Infrastruktur Sipil dan Perancanaan Arsitektur', 'Perencanaan Tata Ruang dan Pertanahan', 'Teknologi Rekayasa Kimia Industri', 'Teknologi Rekayasa Otomasi', 'Teknologi Rekayasa Konstruksi Perkapalan', 'Teknik Listrik Industri', 'Akuntansi Perpajakan', 'Manajemen dan Administrasi Logistik', 'Bahasa Terapan Asing', 'Informasi dan Hubungan Masyarakat']
 };
+
+const monthNames = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+];
 
 const DatabaseAdmin = () => {
   const [data, setData] = useState([]);
@@ -40,6 +45,8 @@ const DatabaseAdmin = () => {
     angkatan: '',
     tempatLahir: '',
     tanggalLahir: '',
+    displayTanggalLahir: '',
+    dateValue: '',
     pandega: ''
   });
 
@@ -144,6 +151,29 @@ const DatabaseAdmin = () => {
     });
   };
 
+  // Handle date change
+  const handleDateChange = (e) => {
+    const date = new Date(e.target.value);
+    const day = date.getDate();
+    const month = date.getMonth();
+    const year = date.getFullYear();
+    
+    const formattedDate = `${day} ${monthNames[month]} ${year}`;
+    const dbFormat = `${day}/${month + 1}/${year}`;
+    
+    setFormData({
+      ...formData,
+      tanggalLahir: dbFormat,
+      displayTanggalLahir: formattedDate,
+      dateValue: e.target.value
+    });
+    
+    setErrors({
+      ...errors,
+      tanggalLahir: ''
+    });
+  };
+
   // Handle fakultas change
   const handleFakultasChange = (e) => {
     const fakultas = e.target.value;
@@ -177,8 +207,8 @@ const DatabaseAdmin = () => {
     if (!formData.nim) {
       newErrors.nim = 'NIM wajib diisi';
       valid = false;
-    } else if (formData.nim.length !== 14) {
-      newErrors.nim = 'NIM harus 14 digit';
+    } else if (formData.nim.length < 13 || formData.nim.length > 14) {
+      newErrors.nim = 'NIM harus 13 atau 14 digit';
       valid = false;
     }
     
@@ -221,7 +251,9 @@ const DatabaseAdmin = () => {
       let response;
       const token = localStorage.getItem('token');
       
-      const ttl = `${formData.tempatLahir}, ${formData.tanggalLahir}`;
+      const [day, month, year] = formData.tanggalLahir.split('/');
+      const formattedDate = `${day} ${monthNames[parseInt(month) - 1]} ${year}`;
+      const ttl = `${formData.tempatLahir}, ${formattedDate}`;
       
       const memberData = {
         nama: formData.nama,
@@ -231,7 +263,8 @@ const DatabaseAdmin = () => {
         jurusan: formData.jurusan,
         angkatan: formData.angkatan,
         ttl,
-        pandega: formData.pandega || '-'
+        pandega: formData.pandega || '-',
+        tanggalLahir: formData.tanggalLahir
       };
 
       if (editData) {
@@ -282,6 +315,8 @@ const DatabaseAdmin = () => {
       angkatan: '',
       tempatLahir: '',
       tanggalLahir: '',
+      displayTanggalLahir: '',
+      dateValue: '',
       pandega: ''
     });
     setJurusanOptions([]);
@@ -303,6 +338,20 @@ const DatabaseAdmin = () => {
     
     const [tempatLahir = '', tanggalLahir = ''] = item.ttl.split(', ');
     
+    // Convert format DD/MM/YYYY ke format date input (YYYY-MM-DD)
+    let dateValue = '';
+    if (tanggalLahir) {
+      const dateParts = tanggalLahir.trim().split(' ');
+      if (dateParts.length === 3) {
+        const day = dateParts[0];
+        const month = monthNames.indexOf(dateParts[1]);
+        const year = dateParts[2];
+        if (month !== -1) {
+          dateValue = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+      }
+    }
+    
     setFormData({
       nama: item.nama,
       noInduk: item.noInduk === '-' ? '' : item.noInduk,
@@ -311,7 +360,9 @@ const DatabaseAdmin = () => {
       jurusan: item.jurusan,
       angkatan: item.angkatan,
       tempatLahir: tempatLahir || '',
-      tanggalLahir: tanggalLahir || '',
+      tanggalLahir: item.tanggalLahir || '',
+      displayTanggalLahir: tanggalLahir || '',
+      dateValue: dateValue,
       pandega: item.pandega === '-' ? '' : item.pandega
     });
     
@@ -353,19 +404,47 @@ const DatabaseAdmin = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <NavbarAdmin />
       
-      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full">
+      <main className="flex-grow flex-wrap gap-2 max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Database Anggota</h1>
-          <button
-            onClick={() => {
-              setShowAddForm(true);
-              setEditData(null);
-              resetForm();
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
-          >
-            Tambah Data
-          </button>
+          <h1 className="text-2xl font-bold text-gray-800 w-full md:w-auto">Database Anggota</h1>
+          <div className="flex flex-wrap gap-2 w-full md:w-auto">
+            <button
+              onClick={() => requestSort('angkatan')}
+              className={`px-3 py-2 rounded-md text-sm ${
+                sortConfig.key === 'angkatan' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+              }`}
+            >
+              Sort by Angkatan {sortConfig.key === 'angkatan' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+            </button>
+            <button
+              onClick={() => requestSort('fakultas')}
+              className={`px-3 py-2 rounded-md text-sm ${
+                sortConfig.key === 'fakultas' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+              }`}
+            >
+              Sort by Fakultas {sortConfig.key === 'fakultas' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+            </button>
+            <button
+              onClick={() => setSortConfig({ key: 'nama', direction: 'asc' })}
+              className="px-3 py-2 rounded-md text-sm bg-gray-200 hover:bg-gray-300 text-gray-800"
+            >
+              Reset Sort
+            </button>
+            <button
+              onClick={() => {
+                setShowAddForm(true);
+                setEditData(null);
+                resetForm();
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+            >
+              Tambah Data
+            </button>
+          </div>
         </div>
 
         {/* Error Message */}
@@ -454,7 +533,7 @@ const DatabaseAdmin = () => {
                       className={`w-full p-2 border ${errors.nim ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                       required
                       maxLength={14}
-                      placeholder="14 digit angka"
+                      placeholder="13 atau 14 digit angka"
                     />
                     {errors.nim && <p className="mt-1 text-sm text-red-600">{errors.nim}</p>}
                   </div>
@@ -519,14 +598,18 @@ const DatabaseAdmin = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Lahir*</label>
                     <input
-                      type="text"
+                      type="date"
                       name="tanggalLahir"
-                      value={formData.tanggalLahir}
-                      onChange={handleInputChange}
+                      value={formData.dateValue || ''}
+                      onChange={handleDateChange}
                       className={`w-full p-2 border ${errors.tanggalLahir ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                       required
-                      placeholder="Contoh: 10 Jan 2000"
                     />
+                    {formData.displayTanggalLahir && (
+                      <p className="mt-1 text-sm text-gray-500">
+                        Format tampilan: {formData.displayTanggalLahir}
+                      </p>
+                    )}
                     {errors.tanggalLahir && <p className="mt-1 text-sm text-red-600">{errors.tanggalLahir}</p>}
                   </div>
                   <div>
@@ -648,7 +731,7 @@ const DatabaseAdmin = () => {
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                     onClick={() => requestSort('ttl')}
                   >
-                    TTL
+                    Tempat Tanggal Lahir
                   </th>
                   <th
                     scope="col"

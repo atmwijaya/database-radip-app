@@ -10,8 +10,8 @@ const databaseValidators = {
       .withMessage("NIM harus diisi")
       .isNumeric()
       .withMessage("NIM harus berupa angka")
-      .isLength({ min: 14, max: 14 })
-      .withMessage("NIM harus 14 digit"),
+      .isLength({ min: 13, max: 14 })
+      .withMessage("NIM harus 13 atau 14 digit"),
     body("fakultas")
     .notEmpty()
     .withMessage("Fakultas harus diisi"),
@@ -45,7 +45,7 @@ const databaseValidators = {
       .optional()
       .isNumeric()
       .withMessage("NIM harus berupa angka")
-      .isLength({ min: 14, max: 14 })
+      .isLength({ min: 13, max: 14 })
       .withMessage("NIM harus 8 digit"),
     body("fakultas").optional().notEmpty().withMessage("Fakultas harus diisi"),
     body("jurusan")

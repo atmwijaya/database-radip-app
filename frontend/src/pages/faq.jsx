@@ -93,7 +93,7 @@ const FAQ = () => {
     },
     {
       question: "Apakah alumni juga tercantum dalam database ini?",
-      answer: "Ya, database ini mencakup data anggota aktif dan alumni Racana Diponegoro. Alumni tetap tercatat sebagai bagian dari keluarga besar Racana dengan status keanggotaan yang disesuaikan."
+      answer: "Tidak, database ini hanya mencakup data anggota aktif. Alumni tetap tercatat pada buku induk, namun tidak ditampilkan dalam database online."
     }
   ];
 
