@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import NavbarAdmin from '../components/navbarAdmin';
 import Footer from '../../components/footer';
-
+import { checkTokenExpiration } from '../../../../backend/utils/auth';
 const BerandaAdmin = () => {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,10 +14,15 @@ const BerandaAdmin = () => {
   // Fetch data from backend
   const fetchData = async () => {
     try {
+       const token = localStorage.getItem('token');
+      if (!token || !checkTokenExpiration()) {
+        logout();
+        return;
+      }
       setLoading(true);
       const response = await fetch(`${API_BASE_URL}/api/database`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       
@@ -40,26 +45,23 @@ const BerandaAdmin = () => {
   };
 
   useEffect(() => {
-    fetchData();
-    const checkAuth = async () => {
     const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
+    if (!token || !checkTokenExpiration()) {
+      logout();
       return;
     }
 
-    try {
-      const isValid = await verifyToken(token);
-      if (!isValid) {
+    fetchData();
+
+    // Set up token expiration check every minute
+    const tokenCheckInterval = setInterval(() => {
+      if (!checkTokenExpiration()) {
         logout();
       }
-    } catch (error) {
-      logout();
-    }
-  };
+    }, 60000);
 
-  
     return () => {
+      clearInterval(tokenCheckInterval);
       if (animationRef.current) {
         clearTimeout(animationRef.current);
       }

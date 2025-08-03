@@ -1,79 +1,173 @@
-import React, { useState, useEffect } from 'react';
-import NavbarAdmin from '../components/navbarAdmin';
-import Footer from '../../components/footer';
+import React, { useState, useEffect } from "react";
+import NavbarAdmin from "../components/navbarAdmin";
+import Footer from "../../components/footer";
+import { checkTokenExpiration, logout } from "../../../../backend/utils/auth";
+import { useNavigate } from "react-router-dom";
 
 // Data fakultas dan jurusan
 const fakultasJurusan = {
-  'Hukum': ['Hukum'],
-  'Ekonomi': ['Akuntansi', 'Ilmu Ekonomi', 'Manajemen', 'Ekonomi Islam', 'Bisnis Digital'],
-  'Teknik': ['Teknik Sipil', 'Arsitektur', 'Teknik Kimia', 'Teknik Mesin', 'Teknik Elektro', 'Perencanaan Wilayah dan Kota', 'Teknik Industri', 'Teknik Lingkungan', 'Teknik Perkapalan', 'Teknik Geologi', 'Teknik Geodesi', 'Teknik Komputer'],
-  'Kedokteran': ['Kedokteran', 'Ilmu Gizi', 'Keperawatan', 'Farmasi', 'Kedokteran Gigi'],
-  'Peternakan dan Pertanian': ['Peternakan', 'Agribisnis', 'Agroteknologi', 'Teknologi Pangan', 'Akuakultur'],
-  'Ilmu Budaya' : ['Sastra Inggris', 'Sastra Indonesia', 'Sejarah', 'Ilmu Perpustakaan', 'Antropologi Sosial', 'Bahasa dan Kebudayaan Jepang'],
-  'Ilmu Sosial dan Politik': ['Administrasi Publik', 'Administrasi Bisnis', 'Ilmu Pemerintahan', 'Ilmu Komunikasi', 'Hubungan Internasional'],
-  'Sains dan Matematika': ['Matematika', 'Biologi', 'Kimia', 'Fisika', 'Statistika', 'Bioteknologi', 'Informatika'],
-  'Kesehatan Masyarakat' : ['Kesehatan Masyarakat', 'Kesehatan dan Keselamatan Kerja'],
-  'Perikanan dan Ilmu Kelautan' : ['Akuakultur', 'Ilmu Kelautan', 'Manajemen Sumber Daya Perairan', 'Oseanografi', 'Perikanan Tangkap', 'Teknologi Hasil Perikanan'],
-  'Psikologi': ['Psikologi'],
-  'Vokasi' : ['Teknik Infrastruktur Sipil dan Perancanaan Arsitektur', 'Perencanaan Tata Ruang dan Pertanahan', 'Teknologi Rekayasa Kimia Industri', 'Teknologi Rekayasa Otomasi', 'Teknologi Rekayasa Konstruksi Perkapalan', 'Teknik Listrik Industri', 'Akuntansi Perpajakan', 'Manajemen dan Administrasi Logistik', 'Bahasa Terapan Asing', 'Informasi dan Hubungan Masyarakat']
+  Hukum: ["Hukum"],
+  Ekonomi: [
+    "Akuntansi",
+    "Ilmu Ekonomi",
+    "Manajemen",
+    "Ekonomi Islam",
+    "Bisnis Digital",
+  ],
+  Teknik: [
+    "Teknik Sipil",
+    "Arsitektur",
+    "Teknik Kimia",
+    "Teknik Mesin",
+    "Teknik Elektro",
+    "Perencanaan Wilayah dan Kota",
+    "Teknik Industri",
+    "Teknik Lingkungan",
+    "Teknik Perkapalan",
+    "Teknik Geologi",
+    "Teknik Geodesi",
+    "Teknik Komputer",
+  ],
+  Kedokteran: [
+    "Kedokteran",
+    "Ilmu Gizi",
+    "Keperawatan",
+    "Farmasi",
+    "Kedokteran Gigi",
+  ],
+  "Peternakan dan Pertanian": [
+    "Peternakan",
+    "Agribisnis",
+    "Agroteknologi",
+    "Teknologi Pangan",
+    "Akuakultur",
+  ],
+  "Ilmu Budaya": [
+    "Sastra Inggris",
+    "Sastra Indonesia",
+    "Sejarah",
+    "Ilmu Perpustakaan",
+    "Antropologi Sosial",
+    "Bahasa dan Kebudayaan Jepang",
+  ],
+  "Ilmu Sosial dan Politik": [
+    "Administrasi Publik",
+    "Administrasi Bisnis",
+    "Ilmu Pemerintahan",
+    "Ilmu Komunikasi",
+    "Hubungan Internasional",
+  ],
+  "Sains dan Matematika": [
+    "Matematika",
+    "Biologi",
+    "Kimia",
+    "Fisika",
+    "Statistika",
+    "Bioteknologi",
+    "Informatika",
+  ],
+  "Kesehatan Masyarakat": [
+    "Kesehatan Masyarakat",
+    "Kesehatan dan Keselamatan Kerja",
+  ],
+  "Perikanan dan Ilmu Kelautan": [
+    "Akuakultur",
+    "Ilmu Kelautan",
+    "Manajemen Sumber Daya Perairan",
+    "Oseanografi",
+    "Perikanan Tangkap",
+    "Teknologi Hasil Perikanan",
+  ],
+  Psikologi: ["Psikologi"],
+  Vokasi: [
+    "Teknik Infrastruktur Sipil dan Perancanaan Arsitektur",
+    "Perencanaan Tata Ruang dan Pertanahan",
+    "Teknologi Rekayasa Kimia Industri",
+    "Teknologi Rekayasa Otomasi",
+    "Teknologi Rekayasa Konstruksi Perkapalan",
+    "Teknik Listrik Industri",
+    "Akuntansi Perpajakan",
+    "Manajemen dan Administrasi Logistik",
+    "Bahasa Terapan Asing",
+    "Informasi dan Hubungan Masyarakat",
+  ],
 };
 
 const monthNames = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
 ];
 
 const DatabaseAdmin = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortConfig, setSortConfig] = useState({ key: 'nama', direction: 'asc' });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortConfig, setSortConfig] = useState({
+    key: "nama",
+    direction: "asc",
+  });
   const [showAddForm, setShowAddForm] = useState(false);
   const [editData, setEditData] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [dataToDelete, setDataToDelete] = useState(null);
   const [jurusanOptions, setJurusanOptions] = useState([]);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const [formData, setFormData] = useState({
-    nama: '',
-    noInduk: '',
-    nim: '',
-    fakultas: '',
-    jurusan: '',
-    angkatan: '',
-    tempatLahir: '',
-    tanggalLahir: '',
-    displayTanggalLahir: '',
-    dateValue: '',
-    pandega: ''
+    nama: "",
+    noInduk: "",
+    nim: "",
+    fakultas: "",
+    jurusan: "",
+    angkatan: "",
+    tempatLahir: "",
+    tanggalLahir: "",
+    displayTanggalLahir: "",
+    dateValue: "",
+    pandega: "",
   });
 
   const [errors, setErrors] = useState({
-    nama: '',
-    nim: '',
-    fakultas: '',
-    jurusan: '',
-    angkatan: '',
-    tempatLahir: '',
-    tanggalLahir: ''
+    nama: "",
+    nim: "",
+    fakultas: "",
+    jurusan: "",
+    angkatan: "",
+    tempatLahir: "",
+    tanggalLahir: "",
   });
 
   // Fetch data from backend
   const fetchData = async () => {
     try {
+      const token = localStorage.getItem("token"); // Get token here
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
       setLoading(true);
       const response = await fetch(`${API_BASE_URL}/api/database`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
-      
+
       if (!response.ok) {
-        throw new Error('Gagal mengambil data');
+        throw new Error("Gagal mengambil data");
       }
-      
+
       const result = await response.json();
       setData(result);
       setLoading(false);
@@ -83,15 +177,38 @@ const DatabaseAdmin = () => {
     }
   };
 
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("admin");
+    localStorage.removeItem("tokenExpiration");
+    navigate("/enter");
+  };
+
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token || !checkTokenExpiration()) {
+      logout();
+      return;
+    }
     fetchData();
+
+    // Set up token expiration check every minute
+    const tokenCheckInterval = setInterval(() => {
+      if (!checkTokenExpiration()) {
+        logout();
+      }
+    }, 60000);
+
+    return () => {
+      clearInterval(tokenCheckInterval);
+    };
   }, []);
 
   // Handle sort
   const requestSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
     }
     setSortConfig({ key, direction });
   };
@@ -102,10 +219,10 @@ const DatabaseAdmin = () => {
     if (sortConfig !== null) {
       sortableData.sort((a, b) => {
         if (a[sortConfig.key] < b[sortConfig.key]) {
-          return sortConfig.direction === 'asc' ? -1 : 1;
+          return sortConfig.direction === "asc" ? -1 : 1;
         }
         if (a[sortConfig.key] > b[sortConfig.key]) {
-          return sortConfig.direction === 'asc' ? 1 : -1;
+          return sortConfig.direction === "asc" ? 1 : -1;
         }
         return 0;
       });
@@ -117,37 +234,39 @@ const DatabaseAdmin = () => {
   const filteredData = sortedData.filter((item) => {
     return (
       item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.noInduk && item.noInduk.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.noInduk &&
+        item.noInduk.toLowerCase().includes(searchTerm.toLowerCase())) ||
       item.nim.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.fakultas.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.jurusan.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.angkatan.toString().includes(searchTerm) ||
       item.ttl.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.pandega && item.pandega.toLowerCase().includes(searchTerm.toLowerCase()))
+      (item.pandega &&
+        item.pandega.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   });
 
   // Handle input change
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
-    if (name === 'nim') {
+
+    if (name === "nim") {
       if (value.length > 14) return;
       if (value && !/^\d+$/.test(value)) return;
     }
-    
-    if (name === 'nama') {
+
+    if (name === "nama") {
       if (!/^[a-zA-Z\s]*$/.test(value)) return;
     }
-    
+
     setFormData({
       ...formData,
-      [name]: value
+      [name]: value,
     });
-    
+
     setErrors({
       ...errors,
-      [name]: ''
+      [name]: "",
     });
   };
 
@@ -157,20 +276,20 @@ const DatabaseAdmin = () => {
     const day = date.getDate();
     const month = date.getMonth();
     const year = date.getFullYear();
-    
+
     const formattedDate = `${day} ${monthNames[month]} ${year}`;
     const dbFormat = `${day}/${month + 1}/${year}`;
-    
+
     setFormData({
       ...formData,
       tanggalLahir: dbFormat,
       displayTanggalLahir: formattedDate,
-      dateValue: e.target.value
+      dateValue: e.target.value,
     });
-    
+
     setErrors({
       ...errors,
-      tanggalLahir: ''
+      tanggalLahir: "",
     });
   };
 
@@ -180,9 +299,9 @@ const DatabaseAdmin = () => {
     setFormData({
       ...formData,
       fakultas,
-      jurusan: ''
+      jurusan: "",
     });
-    
+
     setJurusanOptions(fakultas ? fakultasJurusan[fakultas] || [] : []);
   };
 
@@ -190,53 +309,53 @@ const DatabaseAdmin = () => {
   const validateForm = () => {
     let valid = true;
     const newErrors = {
-      nama: '',
-      nim: '',
-      fakultas: '',
-      jurusan: '',
-      angkatan: '',
-      tempatLahir: '',
-      tanggalLahir: ''
+      nama: "",
+      nim: "",
+      fakultas: "",
+      jurusan: "",
+      angkatan: "",
+      tempatLahir: "",
+      tanggalLahir: "",
     };
-    
+
     if (!formData.nama.trim()) {
-      newErrors.nama = 'Nama lengkap wajib diisi';
+      newErrors.nama = "Nama lengkap wajib diisi";
       valid = false;
     }
-    
+
     if (!formData.nim) {
-      newErrors.nim = 'NIM wajib diisi';
+      newErrors.nim = "NIM wajib diisi";
       valid = false;
     } else if (formData.nim.length < 13 || formData.nim.length > 14) {
-      newErrors.nim = 'NIM harus 13 atau 14 digit';
+      newErrors.nim = "NIM harus 13 atau 14 digit";
       valid = false;
     }
-    
+
     if (!formData.fakultas) {
-      newErrors.fakultas = 'Fakultas wajib dipilih';
+      newErrors.fakultas = "Fakultas wajib dipilih";
       valid = false;
     }
-    
+
     if (!formData.jurusan) {
-      newErrors.jurusan = 'Jurusan wajib dipilih';
+      newErrors.jurusan = "Jurusan wajib dipilih";
       valid = false;
     }
-    
+
     if (!formData.angkatan) {
-      newErrors.angkatan = 'Angkatan wajib diisi';
+      newErrors.angkatan = "Angkatan wajib diisi";
       valid = false;
     }
-    
+
     if (!formData.tempatLahir) {
-      newErrors.tempatLahir = 'Tempat lahir wajib diisi';
+      newErrors.tempatLahir = "Tempat lahir wajib diisi";
       valid = false;
     }
-    
+
     if (!formData.tanggalLahir) {
-      newErrors.tanggalLahir = 'Tanggal lahir wajib diisi';
+      newErrors.tanggalLahir = "Tanggal lahir wajib diisi";
       valid = false;
     }
-    
+
     setErrors(newErrors);
     return valid;
   };
@@ -244,60 +363,64 @@ const DatabaseAdmin = () => {
   // Handle form submit (add/edit)
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     try {
       let response;
-      const token = localStorage.getItem('token');
-      
-      const [day, month, year] = formData.tanggalLahir.split('/');
+      const token = localStorage.getItem("token");
+      if (!token) {
+      logout();
+      return;
+    }
+
+      const [day, month, year] = formData.tanggalLahir.split("/");
       const formattedDate = `${day} ${monthNames[parseInt(month) - 1]} ${year}`;
       const ttl = `${formData.tempatLahir}, ${formattedDate}`;
-      
+
       const memberData = {
         nama: formData.nama,
-        noInduk: formData.noInduk || '-',
+        noInduk: formData.noInduk || "-",
         nim: formData.nim,
         fakultas: formData.fakultas,
         jurusan: formData.jurusan,
         angkatan: formData.angkatan,
         ttl,
-        pandega: formData.pandega || '-',
-        tanggalLahir: formData.tanggalLahir
+        pandega: formData.pandega || "-",
+        tanggalLahir: formData.tanggalLahir,
       };
 
       if (editData) {
         response = await fetch(`${API_BASE_URL}/api/database/${editData._id}`, {
-          method: 'PUT',
+          method: "PUT",
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(memberData)
+          body: JSON.stringify(memberData),
         });
       } else {
         response = await fetch(`${API_BASE_URL}/api/database`, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(memberData)
+          body: JSON.stringify(memberData),
         });
       }
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Terjadi kesalahan');
+        throw new Error(errorData.message || "Terjadi kesalahan");
       }
-      
+
       await fetchData();
       setShowAddForm(false);
       resetForm();
     } catch (err) {
-      if (err.message.includes('NIM sudah terdaftar')) {
-        setErrors(prev => ({...prev, nim: 'NIM sudah terdaftar'}));
+      if (err.message.includes("NIM sudah terdaftar")) {
+        setErrors((prev) => ({ ...prev, nim: "NIM sudah terdaftar" }));
       } else {
         setError(err.message);
       }
@@ -307,27 +430,27 @@ const DatabaseAdmin = () => {
   // Reset form
   const resetForm = () => {
     setFormData({
-      nama: '',
-      noInduk: '',
-      nim: '',
-      fakultas: '',
-      jurusan: '',
-      angkatan: '',
-      tempatLahir: '',
-      tanggalLahir: '',
-      displayTanggalLahir: '',
-      dateValue: '',
-      pandega: ''
+      nama: "",
+      noInduk: "",
+      nim: "",
+      fakultas: "",
+      jurusan: "",
+      angkatan: "",
+      tempatLahir: "",
+      tanggalLahir: "",
+      displayTanggalLahir: "",
+      dateValue: "",
+      pandega: "",
     });
     setJurusanOptions([]);
     setErrors({
-      nama: '',
-      nim: '',
-      fakultas: '',
-      jurusan: '',
-      angkatan: '',
-      tempatLahir: '',
-      tanggalLahir: ''
+      nama: "",
+      nim: "",
+      fakultas: "",
+      jurusan: "",
+      angkatan: "",
+      tempatLahir: "",
+      tanggalLahir: "",
     });
     setError(null);
   };
@@ -335,38 +458,42 @@ const DatabaseAdmin = () => {
   // Handle edit - split TTL into birthplace and date
   const handleEdit = (item) => {
     setEditData(item);
-    
-    const [tempatLahir = '', tanggalLahir = ''] = item.ttl.split(', ');
-    
+
+    const [tempatLahir = "", tanggalLahir = ""] = item.ttl.split(", ");
+
     // Convert format DD/MM/YYYY ke format date input (YYYY-MM-DD)
-    let dateValue = '';
+    let dateValue = "";
     if (tanggalLahir) {
-      const dateParts = tanggalLahir.trim().split(' ');
+      const dateParts = tanggalLahir.trim().split(" ");
       if (dateParts.length === 3) {
         const day = dateParts[0];
         const month = monthNames.indexOf(dateParts[1]);
         const year = dateParts[2];
         if (month !== -1) {
-          dateValue = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.padStart(2, '0')}`;
+          dateValue = `${year}-${(month + 1)
+            .toString()
+            .padStart(2, "0")}-${day.padStart(2, "0")}`;
         }
       }
     }
-    
+
     setFormData({
       nama: item.nama,
-      noInduk: item.noInduk === '-' ? '' : item.noInduk,
+      noInduk: item.noInduk === "-" ? "" : item.noInduk,
       nim: item.nim,
       fakultas: item.fakultas,
       jurusan: item.jurusan,
       angkatan: item.angkatan,
-      tempatLahir: tempatLahir || '',
-      tanggalLahir: item.tanggalLahir || '',
-      displayTanggalLahir: tanggalLahir || '',
+      tempatLahir: tempatLahir || "",
+      tanggalLahir: item.tanggalLahir || "",
+      displayTanggalLahir: tanggalLahir || "",
       dateValue: dateValue,
-      pandega: item.pandega === '-' ? '' : item.pandega
+      pandega: item.pandega === "-" ? "" : item.pandega,
     });
-    
-    setJurusanOptions(item.fakultas ? fakultasJurusan[item.fakultas] || [] : []);
+
+    setJurusanOptions(
+      item.fakultas ? fakultasJurusan[item.fakultas] || [] : []
+    );
     setShowAddForm(true);
   };
 
@@ -379,19 +506,22 @@ const DatabaseAdmin = () => {
   // Handle delete
   const handleDelete = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/database/${dataToDelete._id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${API_BASE_URL}/api/database/${dataToDelete._id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
-      });
-      
+      );
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Gagal menghapus data');
+        throw new Error(errorData.message || "Gagal menghapus data");
       }
-      
+
       await fetchData();
       setShowDeleteModal(false);
       setDataToDelete(null);
@@ -403,33 +533,39 @@ const DatabaseAdmin = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <NavbarAdmin />
-      
+
       <main className="flex-grow flex-wrap gap-2 max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 w-full md:w-auto">Database Anggota</h1>
+          <h1 className="text-2xl font-bold text-gray-800 w-full md:w-auto">
+            Database Anggota
+          </h1>
           <div className="flex flex-wrap gap-2 w-full md:w-auto">
             <button
-              onClick={() => requestSort('angkatan')}
+              onClick={() => requestSort("angkatan")}
               className={`px-3 py-2 rounded-md text-sm ${
-                sortConfig.key === 'angkatan' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                sortConfig.key === "angkatan"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200 hover:bg-gray-300 text-gray-800"
               }`}
             >
-              Sort by Angkatan {sortConfig.key === 'angkatan' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              Sort by Angkatan{" "}
+              {sortConfig.key === "angkatan" &&
+                (sortConfig.direction === "asc" ? "↑" : "↓")}
             </button>
             <button
-              onClick={() => requestSort('fakultas')}
+              onClick={() => requestSort("fakultas")}
               className={`px-3 py-2 rounded-md text-sm ${
-                sortConfig.key === 'fakultas' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                sortConfig.key === "fakultas"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200 hover:bg-gray-300 text-gray-800"
               }`}
             >
-              Sort by Fakultas {sortConfig.key === 'fakultas' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              Sort by Fakultas{" "}
+              {sortConfig.key === "fakultas" &&
+                (sortConfig.direction === "asc" ? "↑" : "↓")}
             </button>
             <button
-              onClick={() => setSortConfig({ key: 'nama', direction: 'asc' })}
+              onClick={() => setSortConfig({ key: "nama", direction: "asc" })}
               className="px-3 py-2 rounded-md text-sm bg-gray-200 hover:bg-gray-300 text-gray-800"
             >
               Reset Sort
@@ -491,7 +627,7 @@ const DatabaseAdmin = () => {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <h2 className="text-xl font-semibold mb-4">
-                {editData ? 'Edit Data Anggota' : 'Tambah Data Anggota Baru'}
+                {editData ? "Edit Data Anggota" : "Tambah Data Anggota Baru"}
               </h2>
               {error && (
                 <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
@@ -501,19 +637,27 @@ const DatabaseAdmin = () => {
               <form onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap*</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nama Lengkap*
+                    </label>
                     <input
                       type="text"
                       name="nama"
                       value={formData.nama}
                       onChange={handleInputChange}
-                      className={`w-full p-2 border ${errors.nama ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                      className={`w-full p-2 border ${
+                        errors.nama ? "border-red-500" : "border-gray-300"
+                      } rounded-md`}
                       required
                     />
-                    {errors.nama && <p className="mt-1 text-sm text-red-600">{errors.nama}</p>}
+                    {errors.nama && (
+                      <p className="mt-1 text-sm text-red-600">{errors.nama}</p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">No. Induk</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      No. Induk
+                    </label>
                     <input
                       type="number"
                       name="noInduk"
@@ -524,85 +668,139 @@ const DatabaseAdmin = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">NIM*</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      NIM*
+                    </label>
                     <input
                       type="number"
                       name="nim"
                       value={formData.nim}
                       onChange={handleInputChange}
-                      className={`w-full p-2 border ${errors.nim ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                      className={`w-full p-2 border ${
+                        errors.nim ? "border-red-500" : "border-gray-300"
+                      } rounded-md`}
                       required
                       maxLength={14}
                       placeholder="13 atau 14 digit angka"
                     />
-                    {errors.nim && <p className="mt-1 text-sm text-red-600">{errors.nim}</p>}
+                    {errors.nim && (
+                      <p className="mt-1 text-sm text-red-600">{errors.nim}</p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Fakultas*</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Fakultas*
+                    </label>
                     <select
                       name="fakultas"
                       value={formData.fakultas}
                       onChange={handleFakultasChange}
-                      className={`w-full p-2 border ${errors.fakultas ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                      className={`w-full p-2 border ${
+                        errors.fakultas ? "border-red-500" : "border-gray-300"
+                      } rounded-md`}
                       required
                     >
                       <option value="">Pilih Fakultas</option>
                       {Object.keys(fakultasJurusan).map((fakultas) => (
-                        <option key={fakultas} value={fakultas}>{fakultas}</option>
+                        <option key={fakultas} value={fakultas}>
+                          {fakultas}
+                        </option>
                       ))}
                     </select>
-                    {errors.fakultas && <p className="mt-1 text-sm text-red-600">{errors.fakultas}</p>}
+                    {errors.fakultas && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.fakultas}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Jurusan*</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Jurusan*
+                    </label>
                     <select
                       name="jurusan"
                       value={formData.jurusan}
                       onChange={handleInputChange}
-                      className={`w-full p-2 border ${errors.jurusan ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                      className={`w-full p-2 border ${
+                        errors.jurusan ? "border-red-500" : "border-gray-300"
+                      } rounded-md`}
                       required
                       disabled={!formData.fakultas}
                     >
-                      <option value="">{formData.fakultas ? 'Pilih Jurusan' : 'Pilih Fakultas terlebih dahulu'}</option>
+                      <option value="">
+                        {formData.fakultas
+                          ? "Pilih Jurusan"
+                          : "Pilih Fakultas terlebih dahulu"}
+                      </option>
                       {jurusanOptions.map((jurusan) => (
-                        <option key={jurusan} value={jurusan}>{jurusan}</option>
+                        <option key={jurusan} value={jurusan}>
+                          {jurusan}
+                        </option>
                       ))}
                     </select>
-                    {errors.jurusan && <p className="mt-1 text-sm text-red-600">{errors.jurusan}</p>}
+                    {errors.jurusan && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.jurusan}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Angkatan*</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Angkatan*
+                    </label>
                     <input
                       type="number"
                       name="angkatan"
                       value={formData.angkatan}
                       onChange={handleInputChange}
-                      className={`w-full p-2 border ${errors.angkatan ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                      className={`w-full p-2 border ${
+                        errors.angkatan ? "border-red-500" : "border-gray-300"
+                      } rounded-md`}
                       required
                     />
-                    {errors.angkatan && <p className="mt-1 text-sm text-red-600">{errors.angkatan}</p>}
+                    {errors.angkatan && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.angkatan}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tempat Lahir*</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tempat Lahir*
+                    </label>
                     <input
                       type="text"
                       name="tempatLahir"
                       value={formData.tempatLahir}
                       onChange={handleInputChange}
-                      className={`w-full p-2 border ${errors.tempatLahir ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                      className={`w-full p-2 border ${
+                        errors.tempatLahir
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      } rounded-md`}
                       required
                       placeholder="Contoh: Jakarta"
                     />
-                    {errors.tempatLahir && <p className="mt-1 text-sm text-red-600">{errors.tempatLahir}</p>}
+                    {errors.tempatLahir && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.tempatLahir}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Lahir*</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tanggal Lahir*
+                    </label>
                     <input
                       type="date"
                       name="tanggalLahir"
-                      value={formData.dateValue || ''}
+                      value={formData.dateValue || ""}
                       onChange={handleDateChange}
-                      className={`w-full p-2 border ${errors.tanggalLahir ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                      className={`w-full p-2 border ${
+                        errors.tanggalLahir
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      } rounded-md`}
                       required
                     />
                     {formData.displayTanggalLahir && (
@@ -610,10 +808,16 @@ const DatabaseAdmin = () => {
                         Format tampilan: {formData.displayTanggalLahir}
                       </p>
                     )}
-                    {errors.tanggalLahir && <p className="mt-1 text-sm text-red-600">{errors.tanggalLahir}</p>}
+                    {errors.tanggalLahir && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.tanggalLahir}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Pandega</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nama Pandega
+                    </label>
                     <input
                       type="text"
                       name="pandega"
@@ -639,7 +843,7 @@ const DatabaseAdmin = () => {
                     type="submit"
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                   >
-                    {editData ? 'Update' : 'Simpan'}
+                    {editData ? "Update" : "Simpan"}
                   </button>
                 </div>
               </form>
@@ -651,8 +855,12 @@ const DatabaseAdmin = () => {
         {showDeleteModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
-              <h3 className="text-lg font-semibold mb-4">Konfirmasi Hapus Data</h3>
-              <p className="mb-6">Apakah Anda yakin ingin menghapus data {dataToDelete?.nama}?</p>
+              <h3 className="text-lg font-semibold mb-4">
+                Konfirmasi Hapus Data
+              </h3>
+              <p className="mb-6">
+                Apakah Anda yakin ingin menghapus data {dataToDelete?.nama}?
+              </p>
               {error && (
                 <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
                   {error}
@@ -688,28 +896,28 @@ const DatabaseAdmin = () => {
                   <th
                     scope="col"
                     className="sticky left-0 z-20 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer bg-gray-50 shadow-right"
-                    onClick={() => requestSort('no')}
+                    onClick={() => requestSort("no")}
                   >
                     No
                   </th>
                   <th
                     scope="col"
                     className="sticky left-12 z-20 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 shadow-right cursor-pointer"
-                    onClick={() => requestSort('nama')}
+                    onClick={() => requestSort("nama")}
                   >
                     Nama Lengkap
                   </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort('noInduk')}
+                    onClick={() => requestSort("noInduk")}
                   >
                     No. Induk
                   </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort('nim')}
+                    onClick={() => requestSort("nim")}
                   >
                     NIM
                   </th>
@@ -722,25 +930,28 @@ const DatabaseAdmin = () => {
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort('angkatan')}
+                    onClick={() => requestSort("angkatan")}
                   >
                     Angkatan
                   </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort('ttl')}
+                    onClick={() => requestSort("ttl")}
                   >
                     Tempat Tanggal Lahir
                   </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort('pandega')}
+                    onClick={() => requestSort("pandega")}
                   >
                     Nama Pandega
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Aksi
                   </th>
                 </tr>
@@ -749,16 +960,30 @@ const DatabaseAdmin = () => {
                 {filteredData.length > 0 ? (
                   filteredData.map((item, index) => (
                     <tr key={item._id} className="hover:bg-gray-50">
-                      <td className="sticky left-0 z-10 px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-white shadow-right">{index + 1}</td>
-                      <td className="sticky left-12 z-10 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 bg-white shadow-right">{item.nama}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.noInduk}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.nim}</td>
+                      <td className="sticky left-0 z-10 px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-white shadow-right">
+                        {index + 1}
+                      </td>
+                      <td className="sticky left-12 z-10 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 bg-white shadow-right">
+                        {item.nama}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.noInduk}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.nim}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {item.fakultas}/{item.jurusan}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.angkatan}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.ttl}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.pandega}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.angkatan}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.ttl}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.pandega}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
                           onClick={() => handleEdit(item)}
@@ -777,7 +1002,10 @@ const DatabaseAdmin = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="9" className="px-6 py-4 text-center text-sm text-gray-500">
+                    <td
+                      colSpan="9"
+                      className="px-6 py-4 text-center text-sm text-gray-500"
+                    >
                       Tidak ada data yang ditemukan
                     </td>
                   </tr>
@@ -819,7 +1047,9 @@ const DatabaseAdmin = () => {
                   </div>
                   <div>
                     <p className="text-gray-500">Fakultas/Jurusan</p>
-                    <p>{item.fakultas}/{item.jurusan}</p>
+                    <p>
+                      {item.fakultas}/{item.jurusan}
+                    </p>
                   </div>
                   <div>
                     <p className="text-gray-500">Angkatan</p>

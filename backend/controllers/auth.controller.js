@@ -1,11 +1,14 @@
 import User from "../models/admin.model.js";
 import { hashPassword, comparePassword } from "../utils/hashPassword.js";
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+
+dotenv.config();
+const JWT_SECRET = process.env.JWT_SECRET;
 
 export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    console.log("Attempting to register user:", { name, email });
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -45,7 +48,18 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, rememberMe = false } = req.body;
+
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    // Verify JWT_SECRET is set
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET is not defined in environment variables");
+      throw new Error("Server configuration error");
+    }
 
     // Find user
     const user = await User.findOne({ email });
@@ -59,17 +73,23 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: "Email/kata sandi tidak cocok!" });
     }
 
+    // Set expiration (1 hour or 7 days if rememberMe is true)
+    const expiresIn = rememberMe ? '7d' : '1h';
+
     const token = jwt.sign(
       {
         user_id: user.user_id,
         email: user.email,
       },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      JWT_SECRET,
+       { 
+        expiresIn: rememberMe ? '7d' : '1h', 
+        algorithm: 'HS256'
+       } 
     );
 
     res.status(200).json({
-      message: "Login successful",
+      success: true,
       token,
       user: {
         id: user.user_id,
@@ -78,6 +98,10 @@ export const login = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Authentication error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Authentication failed"
+    });
   }
 };

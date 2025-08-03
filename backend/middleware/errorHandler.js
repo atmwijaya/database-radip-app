@@ -26,7 +26,9 @@ export function errorHandler(err, req, res, next) {
   }
   
   // Default error handler
-  res.status(500).json({ 
-    message: 'Terjadi kesalahan pada server' 
+  res.status(500).json({
+    success: false,
+    message: 'Internal Server Error',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 }
