@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import logo from '../../assets/Dewasaku_putih.png'; // Adjust the path as necessary
 
 const NavbarAdmin = () => {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ const NavbarAdmin = () => {
             onClick={() => navigate('/admin')}
           >
             <img
-              src="./src/assets/Dewasaku_putih.png"
+              src={logo}
               className="h-12 sm:h-16 object-contain"
               alt="Logo Racana Diponegoro"
             />
