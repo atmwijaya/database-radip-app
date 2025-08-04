@@ -96,15 +96,14 @@ const LoginPage = () => {
       }
 
       // Set expiration time (1 hour or 7 days if remember me)
-      const expiresInMs = formData.rememberMe 
-      ? 7 * 24 * 60 * 60 * 1000 // 7 days
-      : 60 * 60 * 1000; // 1 hour
+      // Set expired time 1 jam dari sekarang
+    const expirationTime = new Date().getTime() + 3600000;
 
 
       // Store token and user data
       localStorage.setItem("token", data.token);
       localStorage.setItem("admin", JSON.stringify(data.user));
-      localStorage.setItem("tokenExpiration", Date.now() + expiresInMs);
+      localStorage.setItem("tokenExpiration", expirationTime.toString());
 
       // Redirect to admin page
       navigate("/admin");

@@ -188,19 +188,18 @@ const DatabaseAdmin = () => {
     const token = localStorage.getItem("token");
     if (!token || !checkTokenExpiration()) {
       logout();
-      return;
     }
     fetchData();
 
     // Set up token expiration check every minute
-    const tokenCheckInterval = setInterval(() => {
+    const Interval = setInterval(() => {
       if (!checkTokenExpiration()) {
         logout();
       }
     }, 60000);
 
     return () => {
-      clearInterval(tokenCheckInterval);
+      clearInterval(Interval);
     };
   }, []);
 
