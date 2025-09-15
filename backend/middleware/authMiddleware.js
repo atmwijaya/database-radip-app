@@ -11,6 +11,10 @@ export const verifyToken = async (req, res, next) => {
         .json({ message: "No token, authorization denied" });
     }
 
+    if (!token) {
+    return res.status(401).json({ message: "Akses ditolak" });
+  }
+
     const token = authHeader.replace("Bearer ", "");
 
     // Verify token

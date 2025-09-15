@@ -8,10 +8,15 @@ import BerandaAdmin from "./admin/pages/berandaAdmin.jsx";
 import DatabaseAdmin from "./admin/pages/databaseAdmin.jsx";
 import LoginPage from "./admin/pages/loginPage.jsx";
 import { checkTokenExpiration } from "../../backend/utils/auth.js";
+import { isAuthenticated } from "../../backend/utils/auth.js";
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");
   const isTokenValid = checkTokenExpiration();
+
+  if (!isAuthenticated()) {
+    return <Navigate to="/enter" replace />;
+  }
 
   if (!token || !isTokenValid) {
     localStorage.removeItem("token");

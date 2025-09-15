@@ -24,6 +24,16 @@ export const verifyThisToken = async (token) => {
   }
 };
 
+export const isAuthenticated = () => {
+  const token = localStorage.getItem('token');
+  const expiration = localStorage.getItem('tokenExpiration');
+  
+  if (!token || !expiration) return false;
+  
+  // Cek apakah token sudah expired
+  return new Date().getTime() < parseInt(expiration);
+};
+
 export const logout = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('admin');

@@ -74,18 +74,16 @@ export const login = async (req, res) => {
     }
 
     // Set expiration (1 hour or 7 days if rememberMe is true)
-    const expiresIn = rememberMe ? '7d' : '1h';
-
     const token = jwt.sign(
       {
         user_id: user.user_id,
         email: user.email,
       },
-      JWT_SECRET,
-       { 
-        expiresIn: rememberMe ? '7d' : '1h', 
-        algorithm: 'HS256'
-       } 
+      process.env.JWT_SECRET,
+      { 
+        expiresIn: '1h', // Selalu 1 jam
+        algorithm: 'HS256' 
+      }
     );
 
     res.status(200).json({
@@ -96,6 +94,7 @@ export const login = async (req, res) => {
         name: user.name,
         email: user.email,
       },
+      expiresIn: 3600
     });
   } catch (error) {
     console.error("Authentication error:", error);

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import NavbarAdmin from '../components/navbarAdmin';
 import Footer from '../../components/footer';
 import { checkTokenExpiration } from '../../../../backend/utils/auth';
+import { isAuthenticated, logout } from '../../../../backend/utils/auth';
+
 const BerandaAdmin = () => {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,12 +53,16 @@ const BerandaAdmin = () => {
       return;
     }
 
+    if (!isAuthenticated()) {
+      navigate('/enter');
+    }
+
     fetchData();
 
     // Set up token expiration check every minute
     const tokenCheckInterval = setInterval(() => {
-      if (!checkTokenExpiration()) {
-        logout();
+      if (!isAuthenticated()) {
+        navigate('/enter');
       }
     }, 60000);
 
