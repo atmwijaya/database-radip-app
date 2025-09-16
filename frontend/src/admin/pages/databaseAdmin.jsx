@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 // Data fakultas dan jurusan
 const fakultasJurusan = {
   Hukum: ["Hukum"],
-  Ekonomi: [
+  "Ekonomika dan Bisnis": [
     "Akuntansi",
     "Ilmu Ekonomi",
     "Manajemen",
