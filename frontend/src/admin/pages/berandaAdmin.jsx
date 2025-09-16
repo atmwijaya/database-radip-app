@@ -22,7 +22,7 @@ const BerandaAdmin = () => {
         return;
       }
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/api/database`, {
+      const response = await fetch(`${API_BASE_URL}/api/db`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
