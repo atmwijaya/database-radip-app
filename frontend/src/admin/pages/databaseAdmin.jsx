@@ -390,7 +390,7 @@ const DatabaseAdmin = () => {
       };
 
       if (editData) {
-        response = await fetch(`${API_BASE_URL}/api/database/${editData._id}`, {
+        response = await fetch(`${API_BASE_URL}/api/db/${editData._id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -399,7 +399,7 @@ const DatabaseAdmin = () => {
           body: JSON.stringify(memberData),
         });
       } else {
-        response = await fetch(`${API_BASE_URL}/api/database`, {
+        response = await fetch(`${API_BASE_URL}/api/db`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -507,7 +507,7 @@ const DatabaseAdmin = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${API_BASE_URL}/api/database/${dataToDelete._id}`,
+        `${API_BASE_URL}/api/db/${dataToDelete._id}`,
         {
           method: "DELETE",
           headers: {
