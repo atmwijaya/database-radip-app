@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import logo from "../../assets/Dewasaku_putih.png"; // Adjust the path as necessary
+import logo from "../../assets/Dewasaku_Putih.png"; // Adjust the path as necessary
 import { logout} from "../../../../backend/utils/auth";
 
 const NavbarAdmin = () => {
