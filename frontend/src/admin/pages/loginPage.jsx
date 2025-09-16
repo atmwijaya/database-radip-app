@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import logo from "../../assets/Radip.png";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -122,7 +123,7 @@ const LoginPage = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <img
           className="mx-auto h-16 w-auto"
-          src="./src/assets/Radip.png"
+          src={logo}
           alt="Logo Racana Diponegoro"
         />
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
