@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import logo from "../assets/Dewasaku_Putih.png";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ const Navbar = () => {
           onClick={() => navigate('/')}
         >
           <img
-            src="./src/assets/Dewasaku_putih.png"
+            src={logo}
             className="h-12 sm:h-16 object-contain"
             alt="Logo Racana Diponegoro"
           />
