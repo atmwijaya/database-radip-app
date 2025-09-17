@@ -122,6 +122,11 @@ const DatabaseAdmin = () => {
   const [dataToDelete, setDataToDelete] = useState(null);
   const [jurusanOptions, setJurusanOptions] = useState([]);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [pageSize, setPageSize] = useState(20);
+  const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -245,6 +250,13 @@ const DatabaseAdmin = () => {
     );
   });
 
+  // Pagination
+  const totalPages = Math.ceil(filteredData.length / pageSize);
+  const paginatedData = filteredData.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   // Handle input change
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -366,12 +378,13 @@ const DatabaseAdmin = () => {
     if (!validateForm()) return;
 
     try {
+      setIsSubmitting(true);
       let response;
       const token = localStorage.getItem("token");
       if (!token) {
-      logout();
-      return;
-    }
+        logout();
+        return;
+      }
 
       const [day, month, year] = formData.tanggalLahir.split("/");
       const formattedDate = `${day} ${monthNames[parseInt(month) - 1]} ${year}`;
@@ -417,12 +430,19 @@ const DatabaseAdmin = () => {
       await fetchData();
       setShowAddForm(false);
       resetForm();
+      setSuccessMessage(
+        editData ? "Data berhasil diperbaharui!" : "Data berhasil ditambahkan!"
+      );
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       if (err.message.includes("NIM sudah terdaftar")) {
         setErrors((prev) => ({ ...prev, nim: "NIM sudah terdaftar" }));
       } else {
         setError(err.message);
+        setTimeout(() => setError(null), 3000);
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -505,6 +525,7 @@ const DatabaseAdmin = () => {
   // Handle delete
   const handleDelete = async () => {
     try {
+      setIsDeleting(true);
       const token = localStorage.getItem("token");
       const response = await fetch(
         `${API_BASE_URL}/api/db/${dataToDelete._id}`,
@@ -524,8 +545,13 @@ const DatabaseAdmin = () => {
       await fetchData();
       setShowDeleteModal(false);
       setDataToDelete(null);
+      setSuccessMessage("Data berhasil dihapus!");
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError(err.message);
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -581,6 +607,13 @@ const DatabaseAdmin = () => {
             </button>
           </div>
         </div>
+
+        {/* Success Message */}
+        {successMessage && (
+          <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+            {successMessage}
+          </div>
+        )}
 
         {/* Error Message */}
         {error && (
@@ -840,9 +873,20 @@ const DatabaseAdmin = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center min-w-[80px]"
+                    disabled={isSubmitting}
                   >
-                    {editData ? "Update" : "Simpan"}
+                    {isSubmitting ? (
+                      <span className="flex">
+                        <span className="animate-bounce">.</span>
+                        <span className="animate-bounce delay-100">.</span>
+                        <span className="animate-bounce delay-200">.</span>
+                      </span>
+                    ) : editData ? (
+                      "Update"
+                    ) : (
+                      "Simpan"
+                    )}
                   </button>
                 </div>
               </form>
@@ -877,9 +921,18 @@ const DatabaseAdmin = () => {
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center justify-center min-w-[80px]"
+                  disabled={isDeleting}
                 >
-                  Hapus
+                  {isDeleting ? (
+                    <span className="flex">
+                      <span className="animate-bounce">.</span>
+                      <span className="animate-bounce delay-100">.</span>
+                      <span className="animate-bounce delay-200">.</span>
+                    </span>
+                  ) : (
+                    "Hapus"
+                  )}
                 </button>
               </div>
             </div>
@@ -889,189 +942,224 @@ const DatabaseAdmin = () => {
         {/* Data Table - Desktop */}
         <div className="hidden md:block bg-white shadow-md rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th
-                    scope="col"
-                    className="sticky left-0 z-20 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer bg-gray-50 shadow-right"
-                    onClick={() => requestSort("no")}
-                  >
-                    No
-                  </th>
-                  <th
-                    scope="col"
-                    className="sticky left-12 z-20 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 shadow-right cursor-pointer"
-                    onClick={() => requestSort("nama")}
-                  >
-                    Nama Lengkap
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort("noInduk")}
-                  >
-                    No. Induk
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort("nim")}
-                  >
-                    NIM
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Fakultas/Jurusan
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort("angkatan")}
-                  >
-                    Angkatan
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort("ttl")}
-                  >
-                    Tempat Tanggal Lahir
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort("pandega")}
-                  >
-                    Nama Pandega
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredData.length > 0 ? (
-                  filteredData.map((item, index) => (
-                    <tr key={item._id} className="hover:bg-gray-50">
-                      <td className="sticky left-0 z-10 px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-white shadow-right">
-                        {index + 1}
-                      </td>
-                      <td className="sticky left-12 z-10 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 bg-white shadow-right">
-                        {item.nama}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.noInduk}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.nim}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.fakultas}/{item.jurusan}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.angkatan}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.ttl}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.pandega}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => handleEdit(item)}
-                          className="text-blue-600 hover:text-blue-900 mr-3"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => confirmDelete(item)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Hapus
-                        </button>
+            <div className="relative max-h-[calc(100vh-300px)] overflow-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 sticky top-0 z-30">
+                  <tr>
+                    <th
+                      scope="col"
+                      className="sticky left-0 z-40 w-16 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer bg-gray-50 shadow-right"
+                      onClick={() => requestSort("no")}
+                    >
+                      No
+                    </th>
+                    <th
+                      scope="col"
+                      className="sticky left-16 z-40 min-w-[200px] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 shadow-right"
+                      onClick={() => requestSort("nama")}
+                    >
+                      Nama Lengkap
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                      onClick={() => requestSort("noInduk")}
+                    >
+                      No. Induk
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                      onClick={() => requestSort("nim")}
+                    >
+                      NIM
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Fakultas/Jurusan
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                      onClick={() => requestSort("angkatan")}
+                    >
+                      Angkatan
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                      onClick={() => requestSort("ttl")}
+                    >
+                      Tempat Tanggal Lahir
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                      onClick={() => requestSort("pandega")}
+                    >
+                      Nama Pandega
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Aksi
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paginatedData.length > 0 ? (
+                    paginatedData.map((item, index) => (
+                      <tr key={item._id} className="hover:bg-gray-50">
+                        <td className="sticky left-0 z-30 w-16 px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-white shadow-right">
+                          {(currentPage - 1) * pageSize + index + 1}
+                        </td>
+                        <td className="sticky left-16 z-30 min-w-[200px] px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 bg-white shadow-right">
+                          {item.nama}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {item.noInduk}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {item.nim}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {item.fakultas}/{item.jurusan}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {item.angkatan}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {item.ttl}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {item.pandega}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => handleEdit(item)}
+                            className="text-blue-600 hover:text-blue-900 mr-3"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => confirmDelete(item)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Hapus
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan="9"
+                        className="px-6 py-4 text-center text-sm text-gray-500"
+                      >
+                        Tidak ada data yang ditemukan
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan="9"
-                      className="px-6 py-4 text-center text-sm text-gray-500"
-                    >
-                      Tidak ada data yang ditemukan
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
         {/* Data Table - Mobile */}
         <div className="md:hidden space-y-4">
-          {filteredData.length > 0 ? (
-            filteredData.map((item, index) => (
-              <div key={item._id} className="bg-white p-4 rounded-lg shadow">
+          {paginatedData.length > 0 ? (
+            paginatedData.map((item, index) => (
+              <div
+                key={item._id}
+                className="bg-white p-4 rounded-lg shadow border border-gray-200"
+              >
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-medium text-gray-900">{item.nama}</h3>
-                    <p className="text-sm text-gray-500">{item.nim}</p>
+                    <p className="text-sm text-gray-500">
+                      {item.noInduk && `No. Induk: ${item.noInduk} • `}
+                      NIM: {item.nim}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {item.fakultas}/{item.jurusan} • Angkatan: {item.angkatan}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">{item.ttl}</p>
+                    {item.pandega && (
+                      <p className="text-sm text-gray-500 mt-1">
+                        Pandega: {item.pandega}
+                      </p>
+                    )}
                   </div>
-                  <div className="flex space-x-2">
+                  <div className="flex flex-col space-y-2">
                     <button
                       onClick={() => handleEdit(item)}
-                      className="text-blue-600 hover:text-blue-900"
+                      className="text-blue-600 hover:text-blue-900 text-sm"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => confirmDelete(item)}
-                      className="text-red-600 hover:text-red-900"
+                      className="text-red-600 hover:text-red-900 text-sm"
                     >
                       Hapus
                     </button>
                   </div>
                 </div>
-                <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <p className="text-gray-500">No. Induk</p>
-                    <p>{item.noInduk}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Fakultas/Jurusan</p>
-                    <p>
-                      {item.fakultas}/{item.jurusan}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Angkatan</p>
-                    <p>{item.angkatan}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">TTL</p>
-                    <p>{item.ttl}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Pandega</p>
-                    <p>{item.pandega}</p>
-                  </div>
-                </div>
               </div>
             ))
           ) : (
-            <div className="text-center py-4 text-sm text-gray-500">
+            <div className="text-center py-8 text-gray-500">
               Tidak ada data yang ditemukan
             </div>
           )}
         </div>
+
+        {/* Pagination Controls */}
+        <div className="mt-4 flex flex-col md:flex-row justify-between items-center">
+          <div className="flex items-center space-x-2 mb-4 md:mb-0">
+            <span className="text-sm text-gray-700">Tampilkan</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="border border-gray-300 rounded-md p-1 text-sm"
+            >
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span className="text-sm text-gray-700">data per halaman</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50"
+            >
+              Sebelumnya
+            </button>
+            <span className="text-sm text-gray-700">
+              Halaman {currentPage} dari {totalPages}
+            </span>
+            <button
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50"
+            >
+              Selanjutnya
+            </button>
+          </div>
+        </div>
       </main>
+
       <Footer />
     </div>
   );
