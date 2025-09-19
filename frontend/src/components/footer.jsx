@@ -7,7 +7,7 @@ const Footer = () => {
         <p className="text-white font-medium text-sm sm:text-base">
           2025 Copyright SSO Racana Diponegoro
         </p>
-        <span className="text-white font-medium text-sm sm:text-base">| Version 1.0.1</span>
+        <span className="text-white font-medium text-sm sm:text-base">| Version 1.1.0</span>
       </div>
     </footer>
   );

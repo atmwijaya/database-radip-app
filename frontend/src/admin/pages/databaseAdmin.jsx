@@ -3,6 +3,7 @@ import NavbarAdmin from "../components/navbarAdmin";
 import Footer from "../../components/footer";
 import { checkTokenExpiration, logout } from "../../../../backend/utils/auth";
 import { useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
 
 // Data fakultas dan jurusan
 const fakultasJurusan = {
@@ -80,7 +81,7 @@ const fakultasJurusan = {
   ],
   Psikologi: ["Psikologi"],
   Vokasi: [
-    "Teknik Infrastruktur Sipil dan Perancanaan Arsitektur",
+    "Teknik Infrastruktur Sipil dan Perancangan Arsitektur",
     "Perencanaan Tata Ruang dan Pertanahan",
     "Teknologi Rekayasa Kimia Industri",
     "Teknologi Rekayasa Otomasi",
@@ -127,6 +128,10 @@ const DatabaseAdmin = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importData, setImportData] = useState([]);
+  const [importErrors, setImportErrors] = useState([]);
+  const [isImporting, setIsImporting] = useState(false);
   const navigate = useNavigate();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -157,7 +162,7 @@ const DatabaseAdmin = () => {
   // Fetch data from backend
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem("token"); // Get token here
+      const token = localStorage.getItem("token");
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -555,6 +560,177 @@ const DatabaseAdmin = () => {
     }
   };
 
+  // Fungsi untuk menangani upload file
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        
+        // Validasi dan format data
+        const { validData, errors } = validateImportData(jsonData);
+        setImportData(validData);
+        setImportErrors(errors);
+      } catch (err) {
+        setError("Gagal membaca file: " + err.message);
+        setTimeout(() => setError(null), 3000);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  // Fungsi untuk memvalidasi data import
+  const validateImportData = (data) => {
+    const validData = [];
+    const errors = [];
+    
+    data.forEach((row, index) => {
+      const rowErrors = [];
+      
+      // Validasi NIM
+      if (!row.nim || !/^\d{13,14}$/.test(row.nim.toString())) {
+        rowErrors.push(`NIM harus 13 atau 14 digit angka`);
+      }
+      
+      // Validasi Nama
+      if (!row.nama || typeof row.nama !== 'string') {
+        rowErrors.push(`Nama harus diisi`);
+      }
+      
+      // Validasi Fakultas
+      if (!row.fakultas || !Object.keys(fakultasJurusan).includes(row.fakultas)) {
+        rowErrors.push(`Fakultas tidak valid`);
+      }
+      
+      // Validasi Jurusan
+      if (row.fakultas && row.jurusan) {
+        const validJurusan = fakultasJurusan[row.fakultas] || [];
+        if (!validJurusan.includes(row.jurusan)) {
+          rowErrors.push(`Jurusan tidak valid untuk fakultas ${row.fakultas}`);
+        }
+      }
+      
+      // Validasi Angkatan
+      if (!row.angkatan || !/^\d{4}$/.test(row.angkatan.toString())) {
+        rowErrors.push(`Angkatan harus 4 digit angka`);
+      }
+      
+      // Validasi Tempat Lahir
+      if (!row.tempatLahir) {
+        rowErrors.push(`Tempat lahir harus diisi`);
+      }
+      
+      // Validasi Tanggal Lahir
+      if (!row.tanggalLahir) {
+        rowErrors.push(`Tanggal lahir harus diisi`);
+      } else if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(row.tanggalLahir)) {
+        rowErrors.push(`Format tanggal lahir harus DD/MM/YYYY`);
+      }
+      
+      if (rowErrors.length === 0) {
+        // Format TTL
+        const [day, month, year] = row.tanggalLahir.split('/');
+        const formattedDate = `${day} ${monthNames[parseInt(month) - 1]} ${year}`;
+        const ttl = `${row.tempatLahir}, ${formattedDate}`;
+        
+        validData.push({
+          nama: row.nama,
+          noInduk: row.noInduk || "-",
+          nim: row.nim.toString(),
+          fakultas: row.fakultas,
+          jurusan: row.jurusan,
+          angkatan: parseInt(row.angkatan),
+          ttl: ttl,
+          pandega: row.pandega || "-",
+          tanggalLahir: row.tanggalLahir
+        });
+      } else {
+        errors.push({
+          row: index + 2, // +2 karena header + index 0-based
+          errors: rowErrors,
+          data: row
+        });
+      }
+    });
+    
+    return { validData, errors };
+  };
+
+  // Fungsi untuk mengirim data import ke backend
+  const handleImportSubmit = async () => {
+    if (importData.length === 0) return;
+    try {
+      setIsImporting(true);
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch(`${API_BASE_URL}/api/db/import`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ data: importData }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Gagal mengimport data");
+      }
+      
+      await fetchData();
+      setShowImportModal(false);
+      setImportData([]);
+      setImportErrors([]);
+      setSuccessMessage(`Berhasil mengimport ${importData.length} data!`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      setError(err.message);
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  // Fungsi untuk download template
+  const downloadTemplate = () => {
+    const templateData = [
+      {
+        nama: "John Doe",
+        noInduk: "-",
+        nim: "12345678901234",
+        fakultas: "Ekonomika dan Bisnis",
+        jurusan: "Manajemen",
+        angkatan: "2020",
+        tempatLahir: "Jakarta",
+        tanggalLahir: "15/01/2002",
+        pandega: "-"
+      },
+      {
+        nama: "Jane Smith",
+        noInduk: "-",
+        nim: "12345678901235",
+        fakultas: "Teknik",
+        jurusan: "Teknik Sipil",
+        angkatan: "2021",
+        tempatLahir: "Surabaya",
+        tanggalLahir: "20/05/2001",
+        pandega: "-"
+      }
+    ];
+    
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
+    XLSX.writeFile(workbook, "template_import_anggota.xlsx");
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <NavbarAdmin />
@@ -604,6 +780,12 @@ const DatabaseAdmin = () => {
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
             >
               Tambah Data
+            </button>
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md"
+            >
+              Import Data
             </button>
           </div>
         </div>
@@ -890,6 +1072,122 @@ const DatabaseAdmin = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Import Modal */}
+        {showImportModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <h2 className="text-xl font-semibold mb-4">Import Data dari File</h2>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Upload File (CSV atau Excel)
+                </label>
+                <input
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  onChange={handleFileUpload}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Format file harus sesuai dengan template. 
+                  <button 
+                    onClick={downloadTemplate}
+                    className="text-blue-600 hover:underline ml-1"
+                  >
+                    Download template
+                  </button>
+                </p>
+              </div>
+              
+              {importErrors.length > 0 && (
+                <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                  <h3 className="font-semibold mb-2">Error pada baris:</h3>
+                  {importErrors.slice(0, 5).map((error, index) => (
+                    <div key={index} className="mb-2">
+                      <p className="font-medium">Baris {error.row}:</p>
+                      <ul className="list-disc list-inside ml-4">
+                        {error.errors.map((err, i) => (
+                          <li key={i}>{err}</li>
+                        ))}
+                      </ul>
+                      <details className="ml-4 mt-1 text-sm">
+                        <summary>Data baris:</summary>
+                        <pre className="bg-gray-100 p-2 mt-1 rounded overflow-auto">
+                          {JSON.stringify(error.data, null, 2)}
+                        </pre>
+                      </details>
+                    </div>
+                  ))}
+                  {importErrors.length > 5 && (
+                    <p className="mt-2">... dan {importErrors.length - 5} error lainnya</p>
+                  )}
+                </div>
+              )}
+              
+              {importData.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-sm text-green-600">
+                    {importData.length} data valid siap diimport
+                  </p>
+                  <div className="mt-2 max-h-40 overflow-y-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">NIM</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fakultas</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {importData.slice(0, 5).map((item, index) => (
+                          <tr key={index}>
+                            <td className="px-3 py-2 text-sm">{item.nama}</td>
+                            <td className="px-3 py-2 text-sm">{item.nim}</td>
+                            <td className="px-3 py-2 text-sm">{item.fakultas}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {importData.length > 5 && (
+                      <p className="mt-2 text-sm text-gray-500">
+                        ... dan {importData.length - 5} data lainnya
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => {
+                    setShowImportModal(false);
+                    setImportData([]);
+                    setImportErrors([]);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleImportSubmit}
+                  disabled={importData.length === 0 || isImporting}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center min-w-[100px]"
+                >
+                  {isImporting ? (
+                    <span className="flex">
+                      <span className="animate-bounce">.</span>
+                      <span className="animate-bounce delay-100">.</span>
+                      <span className="animate-bounce delay-200">.</span>
+                    </span>
+                  ) : (
+                    `Import (${importData.length})`
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}
