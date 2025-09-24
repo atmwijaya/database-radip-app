@@ -187,7 +187,7 @@ const DatabaseAdmin = () => {
     }
   };
 
-  const logout = () => {
+  const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("admin");
     localStorage.removeItem("tokenExpiration");
@@ -197,19 +197,19 @@ const DatabaseAdmin = () => {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token || !checkTokenExpiration()) {
-      logout();
+      handleLogout();
     }
     fetchData();
 
     // Set up token expiration check every minute
-    const Interval = setInterval(() => {
+    const interval = setInterval(() => {
       if (!checkTokenExpiration()) {
-        logout();
+        handleLogout();
       }
     }, 60000);
 
     return () => {
-      clearInterval(Interval);
+      clearInterval(interval);
     };
   }, []);
 
@@ -260,7 +260,7 @@ const DatabaseAdmin = () => {
   const paginatedData = filteredData.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize
-  );
+  ) || [];
 
   // Handle input change
   const handleInputChange = (e) => {
@@ -387,7 +387,7 @@ const DatabaseAdmin = () => {
       let response;
       const token = localStorage.getItem("token");
       if (!token) {
-        logout();
+        handleLogout();
         return;
       }
 
@@ -569,11 +569,19 @@ const DatabaseAdmin = () => {
     reader.onload = (event) => {
       try {
         const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
+        const workbook = XLSX.read(data, {
+          type: "array",
+          cellDates: true,
+          cellText: false,
+          cellNF: true,
+        });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+          raw: false,
+          defval: "",
+        });
+
         // Validasi dan format data
         const { validData, errors } = validateImportData(jsonData);
         setImportData(validData);
@@ -586,29 +594,70 @@ const DatabaseAdmin = () => {
     reader.readAsArrayBuffer(file);
   };
 
+  // Fungsi untuk konversi scientific notation ke string penuh
+  const convertScientificToFull = (scientificNotation) => {
+    try {
+      const [base, exponent] = scientificNotation.split("E");
+      const [integerPart, decimalPart = ""] = base.split(".");
+
+      const exp = parseInt(exponent);
+      const totalLength = integerPart.length + Math.abs(exp);
+
+      let result = integerPart + decimalPart;
+
+      if (exp > 0) {
+        result = result.padEnd(integerPart.length + exp, "0");
+      } else {
+        result = result.padStart(totalLength, "0");
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Error converting scientific notation:", error);
+      return scientificNotation;
+    }
+  };
+
   // Fungsi untuk memvalidasi data import
   const validateImportData = (data) => {
     const validData = [];
     const errors = [];
-    
+
     data.forEach((row, index) => {
       const rowErrors = [];
-      
+
       // Validasi NIM
-      if (!row.nim || !/^\d{13,14}$/.test(row.nim.toString())) {
-        rowErrors.push(`NIM harus 13 atau 14 digit angka`);
+      let nimValue = row.nim || row.NIM || row.Nim;
+
+      if (!nimValue) {
+        rowErrors.push(`NIM harus diisi`);
+      } else {
+        const nimStr = nimValue.toString().replace(/\D/g, "");
+
+        if (nimStr.length !== 13 && nimStr.length !== 14) {
+          rowErrors.push(
+            `NIM harus 13 atau 14 digit angka. Diterima: ${nimStr} (${nimStr.length} digit)`
+          );
+        } else if (!/^\d+$/.test(nimStr)) {
+          rowErrors.push(`NIM harus berupa angka`);
+        } else {
+          row.nim = nimStr;
+        }
       }
-      
+
       // Validasi Nama
-      if (!row.nama || typeof row.nama !== 'string') {
+      if (!row.nama || typeof row.nama !== "string") {
         rowErrors.push(`Nama harus diisi`);
       }
-      
+
       // Validasi Fakultas
-      if (!row.fakultas || !Object.keys(fakultasJurusan).includes(row.fakultas)) {
+      if (
+        !row.fakultas ||
+        !Object.keys(fakultasJurusan).includes(row.fakultas)
+      ) {
         rowErrors.push(`Fakultas tidak valid`);
       }
-      
+
       // Validasi Jurusan
       if (row.fakultas && row.jurusan) {
         const validJurusan = fakultasJurusan[row.fakultas] || [];
@@ -616,83 +665,164 @@ const DatabaseAdmin = () => {
           rowErrors.push(`Jurusan tidak valid untuk fakultas ${row.fakultas}`);
         }
       }
-      
+
       // Validasi Angkatan
       if (!row.angkatan || !/^\d{4}$/.test(row.angkatan.toString())) {
         rowErrors.push(`Angkatan harus 4 digit angka`);
       }
-      
+
       // Validasi Tempat Lahir
       if (!row.tempatLahir) {
         rowErrors.push(`Tempat lahir harus diisi`);
       }
-      
+
       // Validasi Tanggal Lahir
       if (!row.tanggalLahir) {
         rowErrors.push(`Tanggal lahir harus diisi`);
       } else if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(row.tanggalLahir)) {
         rowErrors.push(`Format tanggal lahir harus DD/MM/YYYY`);
       }
-      
+
       if (rowErrors.length === 0) {
-        // Format TTL
-        const [day, month, year] = row.tanggalLahir.split('/');
-        const formattedDate = `${day} ${monthNames[parseInt(month) - 1]} ${year}`;
+        const [day, month, year] = row.tanggalLahir.split("/");
+        const formattedDate = `${day} ${
+          monthNames[parseInt(month) - 1]
+        } ${year}`;
         const ttl = `${row.tempatLahir}, ${formattedDate}`;
-        
+
         validData.push({
           nama: row.nama,
           noInduk: row.noInduk || "-",
-          nim: row.nim.toString(),
+          nim: row.nim,
           fakultas: row.fakultas,
           jurusan: row.jurusan,
           angkatan: parseInt(row.angkatan),
           ttl: ttl,
           pandega: row.pandega || "-",
-          tanggalLahir: row.tanggalLahir
+          tanggalLahir: row.tanggalLahir,
         });
       } else {
         errors.push({
-          row: index + 2, // +2 karena header + index 0-based
+          row: index + 2,
           errors: rowErrors,
-          data: row
+          data: row,
         });
       }
     });
-    
+
     return { validData, errors };
   };
 
-  // Fungsi untuk mengirim data import ke backend
+  const checkForDuplicates = (data) => {
+    const duplicates = [];
+    const nimSet = new Set();
+
+    data.forEach((item, index) => {
+      if (nimSet.has(item.nim)) {
+        duplicates.push({
+          row: index + 1,
+          nim: item.nim,
+          nama: item.nama,
+        });
+      } else {
+        nimSet.add(item.nim);
+      }
+    });
+
+    return duplicates;
+  };
+
+  // Fungsi untuk mengirim data import ke backend - DIPERBAIKI
   const handleImportSubmit = async () => {
     if (importData.length === 0) return;
+    
     try {
       setIsImporting(true);
       const token = localStorage.getItem("token");
-      
+
+      // Hapus data duplikat sebelum mengirim
+      const uniqueData = [];
+      const nimSet = new Set();
+
+      importData.forEach((item) => {
+        if (!nimSet.has(item.nim)) {
+          nimSet.add(item.nim);
+          uniqueData.push(item);
+        }
+      });
+
+      const dataToSend = uniqueData;
+
       const response = await fetch(`${API_BASE_URL}/api/db/import`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ data: importData }),
+        body: JSON.stringify({ data: dataToSend }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Gagal mengimport data");
       }
-      
-      await fetchData();
-      setShowImportModal(false);
-      setImportData([]);
-      setImportErrors([]);
-      setSuccessMessage(`Berhasil mengimport ${importData.length} data!`);
-      setTimeout(() => setSuccessMessage(null), 3000);
+
+      const result = await response.json();
+      console.log("Response dari backend:", result);
+
+      // PERBAIKAN: Handle error dari backend dengan lebih baik
+      if (result.details && result.details.errors && result.details.errors.length > 0) {
+        // Jika ada error dari backend, tampilkan sebagai importErrors
+        const backendErrors = result.details.errors.map((err, index) => ({
+          row: index + 1,
+          error: err.error || "Error tidak diketahui",
+          data: err // Simpan data error dari backend
+        }));
+
+        setImportErrors(backendErrors);
+        
+        // Tampilkan pesan error yang informatif
+        if (result.details.success > 0) {
+          setSuccessMessage(
+            `Berhasil mengimport ${result.details.success} data, tetapi ${result.details.errors.length} data gagal. Periksa error di bawah.`
+          );
+        } else {
+          setError(`Import gagal: ${result.message || 'Terjadi kesalahan di server'}`);
+        }
+      } else {
+        // Handle success case
+        let successCount = result.details?.success || result.inserted || result.success || dataToSend.length;
+        let duplicateCount = result.details?.duplicates || result.duplicates || 0;
+
+        if (duplicateCount > 0) {
+          setSuccessMessage(
+            `Berhasil mengimport ${successCount} data! ` +
+            `⚠️ ${duplicateCount} data duplikat tidak diimport.`
+          );
+        } else {
+          setSuccessMessage(`✅ Berhasil mengimport ${successCount} data!`);
+        }
+
+        // Refresh data
+        await fetchData();
+
+        // Reset modal jika tidak ada error
+        if (result.details?.errors?.length === 0) {
+          setShowImportModal(false);
+          setImportData([]);
+          setImportErrors([]);
+        }
+      }
+
+      setTimeout(() => {
+        setSuccessMessage(null);
+        setError(null);
+      }, 5000);
+
     } catch (err) {
-      setError(err.message);
-      setTimeout(() => setError(null), 3000);
+      console.error("Error dalam import:", err);
+      setError(err.message || "Terjadi kesalahan saat mengimport data");
+      setTimeout(() => setError(null), 5000);
     } finally {
       setIsImporting(false);
     }
@@ -704,28 +834,56 @@ const DatabaseAdmin = () => {
       {
         nama: "John Doe",
         noInduk: "-",
-        nim: "12345678901234",
+        nim: "'12345678901234",
         fakultas: "Ekonomika dan Bisnis",
         jurusan: "Manajemen",
         angkatan: "2020",
         tempatLahir: "Jakarta",
-        tanggalLahir: "15/01/2002",
-        pandega: "-"
+        tanggalLahir: "'15/01/2002",
+        pandega: "-",
       },
       {
         nama: "Jane Smith",
         noInduk: "-",
-        nim: "12345678901235",
+        nim: "'12345678901235",
         fakultas: "Teknik",
         jurusan: "Teknik Sipil",
         angkatan: "2021",
         tempatLahir: "Surabaya",
-        tanggalLahir: "20/05/2001",
-        pandega: "-"
-      }
+        tanggalLahir: "'20/05/2001",
+        pandega: "-",
+      },
     ];
-    
+
     const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const instructions = [
+      ["INSTRUKSI PENGISIAN:"],
+      ["1. Gunakan format TANGGAL: DD/MM/YYYY (contoh: 17/04/2004)"],
+      ["2. Format NIM: 13 atau 14 digit angka (tanpa huruf atau simbol)"],
+      ["3. Set format kolom sebagai 'Text' sebelum input data"],
+      ["4. Untuk tanggal, gunakan format DD/MM/YYYY, bukan MM/DD/YYYY"],
+      [""],
+      ["DATA CONTOH:"],
+    ];
+
+    XLSX.utils.sheet_add_aoa(worksheet, instructions, { origin: "A10" });
+
+    const range = XLSX.utils.decode_range(worksheet["!ref"]);
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      if (R === 0) continue;
+
+      const nimCell = XLSX.utils.encode_cell({ r: R, c: 2 });
+      if (worksheet[nimCell]) {
+        worksheet[nimCell].t = "s";
+        worksheet[nimCell].z = "@";
+      }
+
+      const dateCell = XLSX.utils.encode_cell({ r: R, c: 7 });
+      if (worksheet[dateCell]) {
+        worksheet[dateCell].t = "s";
+        worksheet[dateCell].z = "@";
+      }
+    }
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
     XLSX.writeFile(workbook, "template_import_anggota.xlsx");
@@ -1080,8 +1238,10 @@ const DatabaseAdmin = () => {
         {showImportModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-              <h2 className="text-xl font-semibold mb-4">Import Data dari File</h2>
-              
+              <h2 className="text-xl font-semibold mb-4">
+                Import Data dari File
+              </h2>
+
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Upload File (CSV atau Excel)
@@ -1093,8 +1253,8 @@ const DatabaseAdmin = () => {
                   className="w-full p-2 border border-gray-300 rounded-md"
                 />
                 <p className="text-sm text-gray-500 mt-1">
-                  Format file harus sesuai dengan template. 
-                  <button 
+                  Format file harus sesuai dengan template.
+                  <button
                     onClick={downloadTemplate}
                     className="text-blue-600 hover:underline ml-1"
                   >
@@ -1102,65 +1262,197 @@ const DatabaseAdmin = () => {
                   </button>
                 </p>
               </div>
-              
+
               {importErrors.length > 0 && (
                 <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-                  <h3 className="font-semibold mb-2">Error pada baris:</h3>
-                  {importErrors.slice(0, 5).map((error, index) => (
-                    <div key={index} className="mb-2">
-                      <p className="font-medium">Baris {error.row}:</p>
-                      <ul className="list-disc list-inside ml-4">
-                        {error.errors.map((err, i) => (
-                          <li key={i}>{err}</li>
-                        ))}
-                      </ul>
-                      <details className="ml-4 mt-1 text-sm">
-                        <summary>Data baris:</summary>
-                        <pre className="bg-gray-100 p-2 mt-1 rounded overflow-auto">
-                          {JSON.stringify(error.data, null, 2)}
-                        </pre>
-                      </details>
-                    </div>
-                  ))}
+                  <h3 className="font-semibold mb-2">
+                    {importErrors.some(e => e.errors) ? 'Error pada baris:' : 'Error dari Server:'}
+                  </h3>
+                  {importErrors.slice(0, 5).map((error, index) => {
+                    const isValidationError = error.errors && Array.isArray(error.errors);
+                    const isBackendError = error.error;
+
+                    return (
+                      <div key={index} className="mb-2">
+                        {isValidationError ? (
+                          <>
+                            <p className="font-medium">Baris {error.row || 'Tidak diketahui'}:</p>
+                            <ul className="list-disc list-inside ml-4">
+                              {error.errors.map((err, i) => (
+                                <li key={i}>{err}</li>
+                              ))}
+                            </ul>
+                            {error.data && (
+                              <details className="ml-4 mt-1 text-sm">
+                                <summary>Data baris:</summary>
+                                <pre className="bg-gray-100 p-2 mt-1 rounded overflow-auto">
+                                  {JSON.stringify(error.data, null, 2)}
+                                </pre>
+                              </details>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-medium">Error Server:</p>
+                            <ul className="list-disc list-inside ml-4">
+                              <li>
+                                <strong>Error:</strong> {error.error || 'Error tidak diketahui'}
+                              </li>
+                              {error.data && (
+                                <>
+                                  <li><strong>Nama:</strong> {error.data.nama}</li>
+                                  <li><strong>NIM:</strong> {error.data.nim}</li>
+                                </>
+                              )}
+                            </ul>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
                   {importErrors.length > 5 && (
-                    <p className="mt-2">... dan {importErrors.length - 5} error lainnya</p>
+                    <p className="mt-2">
+                      ... dan {importErrors.length - 5} error lainnya
+                    </p>
                   )}
+                  <div className="mt-3 p-3 bg-yellow-100 border border-yellow-400 rounded">
+                    <p className="text-yellow-800 text-sm">
+                      <strong>⚠️ Perhatian:</strong> Error "memberToCreate is not defined" 
+                      menunjukkan masalah di server. Silakan hubungi administrator.
+                    </p>
+                  </div>
                 </div>
               )}
-              
+
               {importData.length > 0 && (
                 <div className="mb-4">
                   <p className="text-sm text-green-600">
                     {importData.length} data valid siap diimport
                   </p>
+
+                  {(() => {
+                    const duplicates = checkForDuplicates(importData);
+                    if (duplicates.length > 0) {
+                      return (
+                        <div className="mb-4 p-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded">
+                          <h3 className="font-semibold mb-2">
+                            ⚠️ Peringatan: Data Duplikat
+                          </h3>
+                          <p className="mb-2">
+                            Ditemukan {duplicates.length} data dengan NIM yang
+                            sama:
+                          </p>
+                          <ul className="list-disc list-inside ml-4">
+                            {duplicates.slice(0, 5).map((dup, index) => (
+                              <li key={index}>
+                                Baris {dup.row}: {dup.nama} (NIM: {dup.nim})
+                              </li>
+                            ))}
+                          </ul>
+                          {duplicates.length > 5 && (
+                            <p className="mt-2">
+                              ... dan {duplicates.length - 5} duplikat lainnya
+                            </p>
+                          )}
+                          <p className="mt-2 font-semibold">
+                            Data duplikat tidak akan diimport.
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
                   <div className="mt-2 max-h-40 overflow-y-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">NIM</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fakultas</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            Nama
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            NIM
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            Fakultas
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            Jurusan
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            Angkatan
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            TTL
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            Pandega
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            Status
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {importData.slice(0, 5).map((item, index) => (
-                          <tr key={index}>
-                            <td className="px-3 py-2 text-sm">{item.nama}</td>
-                            <td className="px-3 py-2 text-sm">{item.nim}</td>
-                            <td className="px-3 py-2 text-sm">{item.fakultas}</td>
-                          </tr>
-                        ))}
+                        {importData.slice(0, 10).map((item, index) => {
+                          const isDuplicate = checkForDuplicates(
+                            importData
+                          ).some(
+                            (dup) =>
+                              dup.nim === item.nim && dup.row !== index + 1
+                          );
+
+                          return (
+                            <tr
+                              key={index}
+                              className={
+                                isDuplicate
+                                  ? "bg-yellow-50"
+                                  : index % 2 === 0
+                                  ? "bg-white"
+                                  : "bg-gray-50"
+                              }
+                            >
+                              <td className="px-3 py-2 text-sm">{item.nama}</td>
+                              <td className="px-3 py-2 text-sm">{item.nim}</td>
+                              <td className="px-3 py-2 text-sm">
+                                {item.fakultas}
+                              </td>
+                              <td className="px-3 py-2 text-sm">
+                                {item.jurusan}
+                              </td>
+                              <td className="px-3 py-2 text-sm">
+                                {item.angkatan}
+                              </td>
+                              <td className="px-3 py-2 text-sm">{item.ttl}</td>
+                              <td className="px-3 py-2 text-sm">
+                                {item.pandega}
+                              </td>
+                              <td className="px-3 py-2 text-sm">
+                                {isDuplicate ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    ⚠️ Duplikat
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    ✓ Valid
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
-                    {importData.length > 5 && (
+                    {importData.length > 10 && (
                       <p className="mt-2 text-sm text-gray-500">
-                        ... dan {importData.length - 5} data lainnya
+                        ... dan {importData.length - 10} data lainnya
                       </p>
                     )}
                   </div>
                 </div>
               )}
-              
+
               <div className="flex justify-end space-x-4">
                 <button
                   onClick={() => {
@@ -1172,6 +1464,32 @@ const DatabaseAdmin = () => {
                 >
                   Batal
                 </button>
+
+                {checkForDuplicates(importData).length > 0 && (
+                  <button
+                    onClick={() => {
+                      const uniqueData = [];
+                      const nimSet = new Set();
+
+                      importData.forEach((item) => {
+                        if (!nimSet.has(item.nim)) {
+                          nimSet.add(item.nim);
+                          uniqueData.push(item);
+                        }
+                      });
+
+                      setImportData(uniqueData);
+                      setSuccessMessage(
+                        `Data duplikat telah dihapus. Tinggal ${uniqueData.length} data unik.`
+                      );
+                      setTimeout(() => setSuccessMessage(null), 3000);
+                    }}
+                    className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
+                  >
+                    Hapus Duplikat
+                  </button>
+                )}
+                
                 <button
                   onClick={handleImportSubmit}
                   disabled={importData.length === 0 || isImporting}
@@ -1308,7 +1626,7 @@ const DatabaseAdmin = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedData.length > 0 ? (
+                  {paginatedData && paginatedData.length > 0 ? (
                     paginatedData.map((item, index) => (
                       <tr key={item._id} className="hover:bg-gray-50">
                         <td className="sticky left-0 z-30 w-16 px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-white shadow-right">
@@ -1357,7 +1675,7 @@ const DatabaseAdmin = () => {
                         colSpan="9"
                         className="px-6 py-4 text-center text-sm text-gray-500"
                       >
-                        Tidak ada data yang ditemukan
+                        {loading ? "Memuat data..." : "Tidak ada data yang ditemukan"}
                       </td>
                     </tr>
                   )}
@@ -1369,7 +1687,7 @@ const DatabaseAdmin = () => {
 
         {/* Data Table - Mobile */}
         <div className="md:hidden space-y-4">
-          {paginatedData.length > 0 ? (
+          {paginatedData && paginatedData.length > 0 ? (
             paginatedData.map((item, index) => (
               <div
                 key={item._id}
@@ -1411,7 +1729,7 @@ const DatabaseAdmin = () => {
             ))
           ) : (
             <div className="text-center py-8 text-gray-500">
-              Tidak ada data yang ditemukan
+              {loading ? "Memuat data..." : "Tidak ada data yang ditemukan"}
             </div>
           )}
         </div>
