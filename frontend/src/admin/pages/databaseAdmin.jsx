@@ -1317,8 +1317,7 @@ const DatabaseAdmin = () => {
                   )}
                   <div className="mt-3 p-3 bg-yellow-100 border border-yellow-400 rounded">
                     <p className="text-yellow-800 text-sm">
-                      <strong>⚠️ Perhatian:</strong> Error "memberToCreate is not defined" 
-                      menunjukkan masalah di server. Silakan hubungi administrator.
+                      <strong>⚠️ Perhatian:</strong> Silahkan ganti data yang sudah terdaftar atau hapus dari daftar sebelum mengimport ulang.
                     </p>
                   </div>
                 </div>
