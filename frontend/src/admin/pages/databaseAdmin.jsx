@@ -1210,11 +1210,37 @@ const DatabaseAdmin = () => {
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-medium text-gray-900">{item.nama}</h3>
+                    <div className="flex items-center space-x-2 mb-1">
+                      <h3 className="font-medium text-gray-900">{item.nama}</h3>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                          item.jenjang === "muda"
+                            ? "bg-green-100 text-green-800"
+                            : item.jenjang === "madya"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
+                        {item.jenjang === "muda"
+                          ? "M"
+                          : item.jenjang === "madya"
+                          ? "M"
+                          : "B"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-1">
+                      <span className="font-medium">Dilantik:</span>{" "}
+                      {item.tanggalDilantik
+                        ? new Date(item.tanggalDilantik).toLocaleDateString(
+                            "id-ID"
+                          )
+                        : "-"}
+                    </p>
                     <p className="text-sm text-gray-500">
                       {item.noInduk && `No. Induk: ${item.noInduk} • `}
                       NIM: {item.nim}
                     </p>
+
                     <p className="text-sm text-gray-500 mt-1">
                       {item.fakultas}/{item.jurusan} • Angkatan: {item.angkatan}
                     </p>
