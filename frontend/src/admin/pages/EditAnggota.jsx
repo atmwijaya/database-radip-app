@@ -1,39 +1,126 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import NavbarAdmin from "../components/navbarAdmin";
+import { useQueryClient } from "@tanstack/react-query";
 
 const monthNames = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
 ];
 
 const fakultasJurusan = {
   Hukum: ["Hukum"],
-  "Ekonomika dan Bisnis": ["Akuntansi", "Ilmu Ekonomi", "Manajemen", "Ekonomi Islam", "Bisnis Digital"],
-  Teknik: ["Teknik Sipil", "Arsitektur", "Teknik Kimia", "Teknik Mesin", "Teknik Elektro", "Perencanaan Wilayah dan Kota", "Teknik Industri", "Teknik Lingkungan", "Teknik Perkapalan", "Teknik Geologi", "Teknik Geodesi", "Teknik Komputer"],
-  Kedokteran: ["Kedokteran", "Ilmu Gizi", "Keperawatan", "Farmasi", "Kedokteran Gigi"],
-  "Peternakan dan Pertanian": ["Peternakan", "Agribisnis", "Agroteknologi", "Teknologi Pangan", "Akuakultur"],
-  "Ilmu Budaya": ["Sastra Inggris", "Sastra Indonesia", "Sejarah", "Ilmu Perpustakaan", "Antropologi Sosial", "Bahasa dan Kebudayaan Jepang"],
-  "Ilmu Sosial dan Politik": ["Administrasi Publik", "Administrasi Bisnis", "Ilmu Pemerintahan", "Ilmu Komunikasi", "Hubungan Internasional"],
-  "Sains dan Matematika": ["Matematika", "Biologi", "Kimia", "Fisika", "Statistika", "Bioteknologi", "Informatika"],
-  "Kesehatan Masyarakat": ["Kesehatan Masyarakat", "Kesehatan dan Keselamatan Kerja"],
-  "Perikanan dan Ilmu Kelautan": ["Akuakultur", "Ilmu Kelautan", "Manajemen Sumber Daya Perairan", "Oseanografi", "Perikanan Tangkap", "Teknologi Hasil Perikanan"],
+  "Ekonomika dan Bisnis": [
+    "Akuntansi",
+    "Ilmu Ekonomi",
+    "Manajemen",
+    "Ekonomi Islam",
+    "Bisnis Digital",
+  ],
+  Teknik: [
+    "Teknik Sipil",
+    "Arsitektur",
+    "Teknik Kimia",
+    "Teknik Mesin",
+    "Teknik Elektro",
+    "Perencanaan Wilayah dan Kota",
+    "Teknik Industri",
+    "Teknik Lingkungan",
+    "Teknik Perkapalan",
+    "Teknik Geologi",
+    "Teknik Geodesi",
+    "Teknik Komputer",
+  ],
+  Kedokteran: [
+    "Kedokteran",
+    "Ilmu Gizi",
+    "Keperawatan",
+    "Farmasi",
+    "Kedokteran Gigi",
+  ],
+  "Peternakan dan Pertanian": [
+    "Peternakan",
+    "Agribisnis",
+    "Agroteknologi",
+    "Teknologi Pangan",
+    "Akuakultur",
+  ],
+  "Ilmu Budaya": [
+    "Sastra Inggris",
+    "Sastra Indonesia",
+    "Sejarah",
+    "Ilmu Perpustakaan",
+    "Antropologi Sosial",
+    "Bahasa dan Kebudayaan Jepang",
+  ],
+  "Ilmu Sosial dan Politik": [
+    "Administrasi Publik",
+    "Administrasi Bisnis",
+    "Ilmu Pemerintahan",
+    "Ilmu Komunikasi",
+    "Hubungan Internasional",
+  ],
+  "Sains dan Matematika": [
+    "Matematika",
+    "Biologi",
+    "Kimia",
+    "Fisika",
+    "Statistika",
+    "Bioteknologi",
+    "Informatika",
+  ],
+  "Kesehatan Masyarakat": [
+    "Kesehatan Masyarakat",
+    "Kesehatan dan Keselamatan Kerja",
+  ],
+  "Perikanan dan Ilmu Kelautan": [
+    "Akuakultur",
+    "Ilmu Kelautan",
+    "Manajemen Sumber Daya Perairan",
+    "Oseanografi",
+    "Perikanan Tangkap",
+    "Teknologi Hasil Perikanan",
+  ],
   Psikologi: ["Psikologi"],
-  Vokasi: ["Teknik Infrastruktur Sipil dan Perancangan Arsitektur", "Perencanaan Tata Ruang dan Pertanahan", "Teknologi Rekayasa Kimia Industri", "Teknologi Rekayasa Otomasi", "Teknologi Rekayasa Konstruksi Perkapalan", "Teknik Listrik Industri", "Akuntansi Perpajakan", "Manajemen dan Administrasi Logistik", "Bahasa Terapan Asing", "Informasi dan Hubungan Masyarakat"]
+  Vokasi: [
+    "Teknik Infrastruktur Sipil dan Perancangan Arsitektur",
+    "Perencanaan Tata Ruang dan Pertanahan",
+    "Teknologi Rekayasa Kimia Industri",
+    "Teknologi Rekayasa Otomasi",
+    "Teknologi Rekayasa Konstruksi Perkapalan",
+    "Teknik Listrik Industri",
+    "Akuntansi Perpajakan",
+    "Manajemen dan Administrasi Logistik",
+    "Bahasa Terapan Asing",
+    "Informasi dan Hubungan Masyarakat",
+  ],
 };
 
 const EditAnggota = () => {
   const { id } = useParams();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const [formData, setFormData] = useState({
-    name: "", // MongoDB menggunakan 'name'
+    name: "", 
     noInduk: "",
     nim: "",
     fakultas: "",
     jurusan: "",
     angkatan: "",
+    jenjang: "muda",
+    tanggalDilantik: "",
     tempatLahir: "",
     tanggalLahir: "",
     displayTanggalLahir: "",
@@ -42,7 +129,15 @@ const EditAnggota = () => {
   });
 
   const [errors, setErrors] = useState({
-    name: "", nim: "", fakultas: "", jurusan: "", angkatan: "", tempatLahir: "", tanggalLahir: ""
+    name: "",
+    nim: "",
+    fakultas: "",
+    jurusan: "",
+    angkatan: "",
+    jenjang: "",
+    tanggalDilantik: "",
+    tempatLahir: "",
+    tanggalLahir: "",
   });
 
   const [jurusanOptions, setJurusanOptions] = useState([]);
@@ -64,13 +159,13 @@ const EditAnggota = () => {
 
         console.log("Fetching member data for ID:", id);
         console.log("API URL:", `${API_BASE_URL}/api/db/${id}`);
-        
+
         const response = await fetch(`${API_BASE_URL}/api/db/${id}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-        
+
         console.log("Response status:", response.status);
 
         if (response.status === 404) {
@@ -80,57 +175,61 @@ const EditAnggota = () => {
         if (!response.ok) {
           const errorText = await response.text();
           console.error("Response error text:", errorText);
-          throw new Error(`Gagal mengambil data anggota: ${response.status} ${response.statusText}`);
+          throw new Error(
+            `Gagal mengambil data anggota: ${response.status} ${response.statusText}`
+          );
         }
 
         const item = await response.json();
         console.log("Data received from API:", item);
-        
+
         // Debug: Show all fields from MongoDB
         console.log("All fields from MongoDB:", Object.keys(item));
         console.log("MongoDB data:", item);
-        
+
         // Extract TTL from MongoDB field (either 'til' or 'ttl')
         const ttlString = item.til || item.ttl || "";
         console.log("TTL string from MongoDB:", ttlString);
-        
+
         // Parse TTL
         let tempatLahir = "";
         let tanggalLahir = "";
         let dateValue = "";
-        
+
         if (ttlString) {
           const ttlParts = ttlString.split(", ");
           console.log("TTL parts:", ttlParts);
-          
+
           if (ttlParts.length >= 1) {
             tempatLahir = ttlParts[0] || "";
           }
-          
+
           if (ttlParts.length >= 2) {
             tanggalLahir = ttlParts[1] || "";
             console.log("Raw tanggal lahir:", tanggalLahir);
-            
-            // Parse various date formats
-            // Format 1: "7 Juni 2002" or "03 Juni 2005"
             const dateMatch1 = tanggalLahir.match(/(\d{1,2}) (\w+) (\d{4})/);
             if (dateMatch1) {
               const day = dateMatch1[1];
               const monthName = dateMatch1[2];
               const year = dateMatch1[3];
-              const monthIndex = monthNames.findIndex(m => 
-                m.toLowerCase() === monthName.toLowerCase()
+              const monthIndex = monthNames.findIndex(
+                (m) => m.toLowerCase() === monthName.toLowerCase()
               );
-              
+
               if (monthIndex !== -1) {
-                dateValue = `${year}-${(monthIndex + 1).toString().padStart(2, '0')}-${day.padStart(2, '0')}`;
+                dateValue = `${year}-${(monthIndex + 1)
+                  .toString()
+                  .padStart(2, "0")}-${day.padStart(2, "0")}`;
                 console.log("Parsed date (format 1):", dateValue);
               }
-            } 
+            }
             // Format 2: "DD/MM/YYYY"
-            else if (tanggalLahir.includes('/')) {
-              const [day, month, year] = tanggalLahir.split('/');
-              dateValue = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            else if (tanggalLahir.includes("/")) {
+              const [day, month, year] = tanggalLahir.split("/");
+              dateValue = `${year}-${month.padStart(2, "0")}-${day.padStart(
+                2,
+                "0"
+              )}`;
               console.log("Parsed date (format 2):", dateValue);
             }
           }
@@ -143,6 +242,10 @@ const EditAnggota = () => {
           fakultas: item.fakultas || "",
           jurusan: item.jurusan || "",
           angkatan: item.angkatan || "",
+          jenjang: item.jenjang || "muda",
+          tanggalDilantik: item.tanggalDilantik
+            ? new Date(item.tanggalDilantik).toISOString().split("T")[0]
+            : "",
           tempatLahir: tempatLahir,
           tanggalLahir: tanggalLahir,
           displayTanggalLahir: tanggalLahir,
@@ -160,7 +263,6 @@ const EditAnggota = () => {
         } else {
           setJurusanOptions([]);
         }
-
       } catch (err) {
         console.error("Error in fetchMemberData:", err);
         setErrorMessage(err.message || "Terjadi kesalahan saat mengambil data");
@@ -177,18 +279,18 @@ const EditAnggota = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
+
     // Validation for NIM
     if (name === "nim") {
       if (value.length > 14) return;
       if (value && !/^\d+$/.test(value)) return;
     }
-    
+
     // Validation for name (allow letters and spaces only)
     if (name === "name") {
       if (!/^[a-zA-Z\s]*$/.test(value)) return;
     }
-    
+
     setFormData({
       ...formData,
       [name]: value,
@@ -210,7 +312,7 @@ const EditAnggota = () => {
       });
       return;
     }
-    
+
     const day = date.getDate();
     const month = date.getMonth();
     const year = date.getFullYear();
@@ -247,7 +349,15 @@ const EditAnggota = () => {
   const validateForm = () => {
     let valid = true;
     const newErrors = {
-      name: "", nim: "", fakultas: "", jurusan: "", angkatan: "", tempatLahir: "", tanggalLahir: ""
+      name: "",
+      nim: "",
+      fakultas: "",
+      jurusan: "",
+      angkatan: "",
+      jenjang: "",
+      tanggalDilantik: "",
+      tempatLahir: "",
+      tanggalLahir: "",
     };
 
     if (!formData.name.trim()) {
@@ -275,6 +385,19 @@ const EditAnggota = () => {
 
     if (!formData.angkatan) {
       newErrors.angkatan = "Angkatan wajib diisi";
+      valid = false;
+    }
+
+    if (!formData.jenjang) {
+      newErrors.jenjang = "Jenjang wajib dipilih";
+      valid = false;
+    } else if (!["muda", "madya", "bhakti"].includes(formData.jenjang)) {
+      newErrors.jenjang = "Jenjang harus: muda, madya, atau bhakti";
+      valid = false;
+    }
+
+    if (!formData.tanggalDilantik) {
+      newErrors.tanggalDilantik = "Tanggal dilantik wajib diisi";
       valid = false;
     }
 
@@ -320,7 +443,9 @@ const EditAnggota = () => {
       }
 
       // Create TTL string for MongoDB
-      const til = `${formData.tempatLahir}, ${formData.displayTanggalLahir || formData.tanggalLahir}`;
+      const til = `${formData.tempatLahir}, ${
+        formData.displayTanggalLahir || formData.tanggalLahir
+      }`;
 
       // Prepare data for MongoDB backend
       const memberData = {
@@ -330,6 +455,8 @@ const EditAnggota = () => {
         fakultas: formData.fakultas,
         jurusan: formData.jurusan,
         angkatan: formData.angkatan,
+        jenjang: formData.jenjang,
+        tanggalDilantik: formData.tanggalDilantik,
         til: til, // Use 'til' as in MongoDB data
         pandega: formData.pandega || "-",
         tanggalLahir: tanggalLahirForDB,
@@ -365,20 +492,22 @@ const EditAnggota = () => {
 
       const result = await response.json();
       console.log("Update successful:", result);
+      queryClient.invalidateQueries(['members', 'admin']);
+      queryClient.invalidateQueries(['members', 'public']);
 
       setSuccessMessage("✅ Data berhasil diperbaharui!");
       setTimeout(() => {
         setSuccessMessage(null);
-        // Redirect to database page after success
         navigate("/admin/database-anggota");
-      }, 2000);
-
+      }, 1500);
     } catch (err) {
       console.error("Error in handleSubmit:", err);
       if (err.message.includes("NIM sudah terdaftar")) {
         setErrors((prev) => ({ ...prev, nim: "NIM sudah terdaftar" }));
       } else {
-        setErrorMessage(err.message || "Terjadi kesalahan saat memperbarui data");
+        setErrorMessage(
+          err.message || "Terjadi kesalahan saat memperbarui data"
+        );
         setTimeout(() => setErrorMessage(null), 5000);
       }
     } finally {
@@ -436,13 +565,27 @@ const EditAnggota = () => {
               onClick={() => navigate("/admin/database-anggota")}
               className="flex items-center text-blue-600 hover:text-blue-800 mb-4"
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              <svg
+                className="w-5 h-5 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                />
               </svg>
               Kembali ke Database
             </button>
-            <h1 className="text-3xl font-bold text-gray-900">Edit Data Anggota</h1>
-            <p className="text-gray-600 mt-2">Perbarui data anggota dengan informasi yang benar</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Edit Data Anggota
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Perbarui data anggota dengan informasi yang benar
+            </p>
           </div>
 
           {/* Success Message */}
@@ -475,14 +618,20 @@ const EditAnggota = () => {
                       name="name" // Changed from 'nama' to 'name'
                       value={formData.name}
                       onChange={handleInputChange}
-                      className={`w-full p-3 border rounded-lg ${errors.name ? "border-red-500" : "border-gray-300"}`}
+                      className={`w-full p-3 border rounded-lg ${
+                        errors.name ? "border-red-500" : "border-gray-300"
+                      }`}
                       required
                     />
-                    {errors.name && <p className="mt-2 text-sm text-red-600">{errors.name}</p>}
+                    {errors.name && (
+                      <p className="mt-2 text-sm text-red-600">{errors.name}</p>
+                    )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">No. Induk</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      No. Induk
+                    </label>
                     <input
                       type="text"
                       name="noInduk"
@@ -504,10 +653,14 @@ const EditAnggota = () => {
                       name="nim"
                       value={formData.nim}
                       onChange={handleInputChange}
-                      className={`w-full p-3 border rounded-lg ${errors.nim ? "border-red-500" : "border-gray-300"}`}
+                      className={`w-full p-3 border rounded-lg ${
+                        errors.nim ? "border-red-500" : "border-gray-300"
+                      }`}
                       required
                     />
-                    {errors.nim && <p className="mt-2 text-sm text-red-600">{errors.nim}</p>}
+                    {errors.nim && (
+                      <p className="mt-2 text-sm text-red-600">{errors.nim}</p>
+                    )}
                   </div>
 
                   <div>
@@ -518,15 +671,23 @@ const EditAnggota = () => {
                       name="fakultas"
                       value={formData.fakultas}
                       onChange={handleFakultasChange}
-                      className={`w-full p-3 border rounded-lg ${errors.fakultas ? "border-red-500" : "border-gray-300"}`}
+                      className={`w-full p-3 border rounded-lg ${
+                        errors.fakultas ? "border-red-500" : "border-gray-300"
+                      }`}
                       required
                     >
                       <option value="">Pilih Fakultas</option>
                       {Object.keys(fakultasJurusan).map((fakultas) => (
-                        <option key={fakultas} value={fakultas}>{fakultas}</option>
+                        <option key={fakultas} value={fakultas}>
+                          {fakultas}
+                        </option>
                       ))}
                     </select>
-                    {errors.fakultas && <p className="mt-2 text-sm text-red-600">{errors.fakultas}</p>}
+                    {errors.fakultas && (
+                      <p className="mt-2 text-sm text-red-600">
+                        {errors.fakultas}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -540,18 +701,28 @@ const EditAnggota = () => {
                       name="jurusan"
                       value={formData.jurusan}
                       onChange={handleInputChange}
-                      className={`w-full p-3 border rounded-lg ${errors.jurusan ? "border-red-500" : "border-gray-300"}`}
+                      className={`w-full p-3 border rounded-lg ${
+                        errors.jurusan ? "border-red-500" : "border-gray-300"
+                      }`}
                       required
                       disabled={!formData.fakultas}
                     >
                       <option value="">
-                        {formData.fakultas ? "Pilih Jurusan" : "Pilih Fakultas terlebih dahulu"}
+                        {formData.fakultas
+                          ? "Pilih Jurusan"
+                          : "Pilih Fakultas terlebih dahulu"}
                       </option>
                       {jurusanOptions.map((jurusan) => (
-                        <option key={jurusan} value={jurusan}>{jurusan}</option>
+                        <option key={jurusan} value={jurusan}>
+                          {jurusan}
+                        </option>
                       ))}
                     </select>
-                    {errors.jurusan && <p className="mt-2 text-sm text-red-600">{errors.jurusan}</p>}
+                    {errors.jurusan && (
+                      <p className="mt-2 text-sm text-red-600">
+                        {errors.jurusan}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -563,10 +734,16 @@ const EditAnggota = () => {
                       name="angkatan"
                       value={formData.angkatan}
                       onChange={handleInputChange}
-                      className={`w-full p-3 border rounded-lg ${errors.angkatan ? "border-red-500" : "border-gray-300"}`}
+                      className={`w-full p-3 border rounded-lg ${
+                        errors.angkatan ? "border-red-500" : "border-gray-300"
+                      }`}
                       required
                     />
-                    {errors.angkatan && <p className="mt-2 text-sm text-red-600">{errors.angkatan}</p>}
+                    {errors.angkatan && (
+                      <p className="mt-2 text-sm text-red-600">
+                        {errors.angkatan}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -581,10 +758,18 @@ const EditAnggota = () => {
                       name="tempatLahir"
                       value={formData.tempatLahir}
                       onChange={handleInputChange}
-                      className={`w-full p-3 border rounded-lg ${errors.tempatLahir ? "border-red-500" : "border-gray-300"}`}
+                      className={`w-full p-3 border rounded-lg ${
+                        errors.tempatLahir
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
                       required
                     />
-                    {errors.tempatLahir && <p className="mt-2 text-sm text-red-600">{errors.tempatLahir}</p>}
+                    {errors.tempatLahir && (
+                      <p className="mt-2 text-sm text-red-600">
+                        {errors.tempatLahir}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -596,26 +781,107 @@ const EditAnggota = () => {
                       name="tanggalLahir"
                       value={formData.dateValue || ""}
                       onChange={handleDateChange}
-                      className={`w-full p-3 border rounded-lg ${errors.tanggalLahir ? "border-red-500" : "border-gray-300"}`}
+                      className={`w-full p-3 border rounded-lg ${
+                        errors.tanggalLahir
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
                       required
                     />
                     {formData.displayTanggalLahir && (
-                      <p className="mt-2 text-sm text-gray-500">Format: {formData.displayTanggalLahir}</p>
+                      <p className="mt-2 text-sm text-gray-500">
+                        Format: {formData.displayTanggalLahir}
+                      </p>
                     )}
-                    {errors.tanggalLahir && <p className="mt-2 text-sm text-red-600">{errors.tanggalLahir}</p>}
+                    {errors.tanggalLahir && (
+                      <p className="mt-2 text-sm text-red-600">
+                        {errors.tanggalLahir}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 {/* Row 5: Pandega */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Nama Pandega</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nama Pandega
+                    </label>
                     <input
                       type="text"
                       name="pandega"
                       value={formData.pandega}
                       onChange={handleInputChange}
                       className="w-full p-3 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 6: Jenjang & Tanggal Dilantik */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Jenjang<span className="text-red-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData({ ...formData, jenjang: "muda" })
+                        }
+                        className={`py-2 px-3 rounded-lg text-sm font-medium ${
+                          formData.jenjang === "muda"
+                            ? "bg-green-100 text-green-800 border-2 border-green-500"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        Muda
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData({ ...formData, jenjang: "madya" })
+                        }
+                        className={`py-2 px-3 rounded-lg text-sm font-medium ${
+                          formData.jenjang === "madya"
+                            ? "bg-red-100 text-red-800 border-2 border-red-500"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        Madya
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData({ ...formData, jenjang: "bhakti" })
+                        }
+                        className={`py-2 px-3 rounded-lg text-sm font-medium ${
+                          formData.jenjang === "bhakti"
+                            ? "bg-yellow-100 text-yellow-800 border-2 border-yellow-500"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        Bhakti
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tanggal Dilantik<span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      name="tanggalDilantik"
+                      value={formData.tanggalDilantik || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          tanggalDilantik: e.target.value,
+                        })
+                      }
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                      required
                     />
                   </div>
                 </div>
@@ -644,9 +910,24 @@ const EditAnggota = () => {
                     >
                       {isSubmitting ? (
                         <>
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          <svg
+                            className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
                           </svg>
                           Memperbarui...
                         </>

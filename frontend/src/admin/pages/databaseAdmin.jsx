@@ -7,44 +7,92 @@ import { checkTokenExpiration } from "../../../../backend/utils/auth";
 import * as XLSX from "xlsx";
 
 const monthNames = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
 ];
 
 const fakultasJurusan = {
   Hukum: ["Hukum"],
   "Ekonomika dan Bisnis": [
-    "Akuntansi", "Ilmu Ekonomi", "Manajemen", "Ekonomi Islam", "Bisnis Digital"
+    "Akuntansi",
+    "Ilmu Ekonomi",
+    "Manajemen",
+    "Ekonomi Islam",
+    "Bisnis Digital",
   ],
   Teknik: [
-    "Teknik Sipil", "Arsitektur", "Teknik Kimia", "Teknik Mesin", "Teknik Elektro",
-    "Perencanaan Wilayah dan Kota", "Teknik Industri", "Teknik Lingkungan",
-    "Teknik Perkapalan", "Teknik Geologi", "Teknik Geodesi", "Teknik Komputer"
+    "Teknik Sipil",
+    "Arsitektur",
+    "Teknik Kimia",
+    "Teknik Mesin",
+    "Teknik Elektro",
+    "Perencanaan Wilayah dan Kota",
+    "Teknik Industri",
+    "Teknik Lingkungan",
+    "Teknik Perkapalan",
+    "Teknik Geologi",
+    "Teknik Geodesi",
+    "Teknik Komputer",
   ],
   Kedokteran: [
-    "Kedokteran", "Ilmu Gizi", "Keperawatan", "Farmasi", "Kedokteran Gigi"
+    "Kedokteran",
+    "Ilmu Gizi",
+    "Keperawatan",
+    "Farmasi",
+    "Kedokteran Gigi",
   ],
   "Peternakan dan Pertanian": [
-    "Peternakan", "Agribisnis", "Agroteknologi", "Teknologi Pangan", "Akuakultur"
+    "Peternakan",
+    "Agribisnis",
+    "Agroteknologi",
+    "Teknologi Pangan",
+    "Akuakultur",
   ],
   "Ilmu Budaya": [
-    "Sastra Inggris", "Sastra Indonesia", "Sejarah", "Ilmu Perpustakaan",
-    "Antropologi Sosial", "Bahasa dan Kebudayaan Jepang"
+    "Sastra Inggris",
+    "Sastra Indonesia",
+    "Sejarah",
+    "Ilmu Perpustakaan",
+    "Antropologi Sosial",
+    "Bahasa dan Kebudayaan Jepang",
   ],
   "Ilmu Sosial dan Politik": [
-    "Administrasi Publik", "Administrasi Bisnis", "Ilmu Pemerintahan",
-    "Ilmu Komunikasi", "Hubungan Internasional"
+    "Administrasi Publik",
+    "Administrasi Bisnis",
+    "Ilmu Pemerintahan",
+    "Ilmu Komunikasi",
+    "Hubungan Internasional",
   ],
   "Sains dan Matematika": [
-    "Matematika", "Biologi", "Kimia", "Fisika", "Statistika",
-    "Bioteknologi", "Informatika"
+    "Matematika",
+    "Biologi",
+    "Kimia",
+    "Fisika",
+    "Statistika",
+    "Bioteknologi",
+    "Informatika",
   ],
   "Kesehatan Masyarakat": [
-    "Kesehatan Masyarakat", "Kesehatan dan Keselamatan Kerja"
+    "Kesehatan Masyarakat",
+    "Kesehatan dan Keselamatan Kerja",
   ],
   "Perikanan dan Ilmu Kelautan": [
-    "Akuakultur", "Ilmu Kelautan", "Manajemen Sumber Daya Perairan",
-    "Oseanografi", "Perikanan Tangkap", "Teknologi Hasil Perikanan"
+    "Akuakultur",
+    "Ilmu Kelautan",
+    "Manajemen Sumber Daya Perairan",
+    "Oseanografi",
+    "Perikanan Tangkap",
+    "Teknologi Hasil Perikanan",
   ],
   Psikologi: ["Psikologi"],
   Vokasi: [
@@ -57,8 +105,8 @@ const fakultasJurusan = {
     "Akuntansi Perpajakan",
     "Manajemen dan Administrasi Logistik",
     "Bahasa Terapan Asing",
-    "Informasi dan Hubungan Masyarakat"
-  ]
+    "Informasi dan Hubungan Masyarakat",
+  ],
 };
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -141,18 +189,18 @@ const DatabaseAdmin = () => {
   const [importData, setImportData] = useState([]);
   const [importErrors, setImportErrors] = useState([]);
   const navigate = useNavigate();
-  
+
   // Gunakan Query Client untuk invalidate cache
   const queryClient = useQueryClient();
 
   // Gunakan React Query untuk fetching data
-  const { 
-    data: members = [], 
-    isLoading, 
+  const {
+    data: members = [],
+    isLoading,
     isError,
-    error: fetchError 
+    error: fetchError,
   } = useQuery({
-    queryKey: ['members', 'admin'], // Key unik untuk cache admin
+    queryKey: ["members", "admin"], // Key unik untuk cache admin
     queryFn: fetchMembersAdmin,
     staleTime: 5 * 60 * 1000, // Data dianggap segar selama 5 menit
     cacheTime: 10 * 60 * 1000, // Cache disimpan selama 10 menit
@@ -166,7 +214,7 @@ const DatabaseAdmin = () => {
     mutationFn: deleteMember,
     onSuccess: () => {
       // Invalidate dan refetch query members
-      queryClient.invalidateQueries(['members', 'admin']);
+      queryClient.invalidateQueries(["members", "admin"]);
       setShowDeleteModal(false);
       setDataToDelete(null);
       setSuccessMessage("Data berhasil dihapus!");
@@ -175,7 +223,7 @@ const DatabaseAdmin = () => {
     onError: (error) => {
       setError(error.message);
       setTimeout(() => setError(null), 3000);
-    }
+    },
   });
 
   // Mutation untuk import members
@@ -183,25 +231,30 @@ const DatabaseAdmin = () => {
     mutationFn: importMembers,
     onSuccess: (result) => {
       // Invalidate dan refetch query members
-      queryClient.invalidateQueries(['members', 'admin']);
-      
+      queryClient.invalidateQueries(["members", "admin"]);
+
       // Handle error dari backend
       if (result.details?.errors?.length > 0) {
         const backendErrors = result.details.errors.map((err, index) => ({
           row: index + 1,
           error: err.error || "Error tidak diketahui",
-          data: err
+          data: err,
         }));
         setImportErrors(backendErrors);
-        
+
         if (result.details.success > 0) {
           setSuccessMessage(
             `Berhasil mengimport ${result.details.success} data, tetapi ${result.details.errors.length} data gagal.`
           );
         }
       } else {
-        let successCount = result.details?.success || result.inserted || result.success || importData.length;
-        let duplicateCount = result.details?.duplicates || result.duplicates || 0;
+        let successCount =
+          result.details?.success ||
+          result.inserted ||
+          result.success ||
+          importData.length;
+        let duplicateCount =
+          result.details?.duplicates || result.duplicates || 0;
 
         if (duplicateCount > 0) {
           setSuccessMessage(
@@ -227,7 +280,7 @@ const DatabaseAdmin = () => {
     onError: (error) => {
       setError(error.message || "Terjadi kesalahan saat mengimport data");
       setTimeout(() => setError(null), 5000);
-    }
+    },
   });
 
   const handleLogout = () => {
@@ -299,10 +352,9 @@ const DatabaseAdmin = () => {
 
   // Pagination
   const totalPages = Math.ceil(filteredData.length / pageSize);
-  const paginatedData = filteredData.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  ) || [];
+  const paginatedData =
+    filteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize) ||
+    [];
 
   // Handle delete confirmation
   const confirmDelete = (item) => {
@@ -381,6 +433,16 @@ const DatabaseAdmin = () => {
       // Validasi Nama
       if (!row.nama || typeof row.nama !== "string") {
         rowErrors.push(`Nama harus diisi`);
+      }
+
+      if (!row.jenjang || !["muda", "madya", "bhakti"].includes(row.jenjang)) {
+        rowErrors.push("Jenjang harus diisi dengan: muda, madya, atau bhakti");
+      }
+
+      if (!row.tanggalDilantik) {
+        rowErrors.push("Tanggal dilantik harus diisi");
+      } else if (!/^\d{4}-\d{2}-\d{2}$/.test(row.tanggalDilantik)) {
+        rowErrors.push("Format tanggal dilantik harus YYYY-MM-DD");
       }
 
       // Validasi Fakultas
@@ -468,7 +530,7 @@ const DatabaseAdmin = () => {
   // Fungsi untuk mengirim data import ke backend
   const handleImportSubmit = async () => {
     if (importData.length === 0) return;
-    
+
     // Hapus data duplikat sebelum mengirim
     const uniqueData = [];
     const nimSet = new Set();
@@ -494,6 +556,8 @@ const DatabaseAdmin = () => {
         fakultas: "Ekonomika dan Bisnis",
         jurusan: "Manajemen",
         angkatan: "2020",
+        jenjang: "muda",
+        tanggalDilantik: "2024-01-15",
         tempatLahir: "Jakarta",
         tanggalLahir: "'15/01/2002",
         pandega: "-",
@@ -505,6 +569,8 @@ const DatabaseAdmin = () => {
         fakultas: "Teknik",
         jurusan: "Teknik Sipil",
         angkatan: "2021",
+        jenjang: "muda",
+        tanggalDilantik: "2024-01-15",
         tempatLahir: "Surabaya",
         tanggalLahir: "'20/05/2001",
         pandega: "-",
@@ -551,9 +617,7 @@ const DatabaseAdmin = () => {
 
       <main className="flex-grow flex flex-col mx-auto px-4 sm:px-6 py-8 w-full">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Database Anggota
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-800">Database Anggota</h1>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => requestSort("angkatan")}
@@ -589,8 +653,18 @@ const DatabaseAdmin = () => {
               to="/admin/create-anggota"
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md inline-flex items-center"
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <svg
+                className="w-4 h-4 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
               Tambah Data
             </Link>
@@ -598,8 +672,18 @@ const DatabaseAdmin = () => {
               onClick={() => setShowImportModal(true)}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md inline-flex items-center"
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              <svg
+                className="w-4 h-4 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
               </svg>
               Import Data
             </button>
@@ -655,7 +739,7 @@ const DatabaseAdmin = () => {
         {/* Fetch Error */}
         {isError && (
           <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-            {fetchError?.message || 'Gagal mengambil data'}
+            {fetchError?.message || "Gagal mengambil data"}
           </div>
         )}
 
@@ -691,17 +775,22 @@ const DatabaseAdmin = () => {
               {importErrors.length > 0 && (
                 <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
                   <h3 className="font-semibold mb-2">
-                    {importErrors.some(e => e.errors) ? 'Error pada baris:' : 'Error dari Server:'}
+                    {importErrors.some((e) => e.errors)
+                      ? "Error pada baris:"
+                      : "Error dari Server:"}
                   </h3>
                   {importErrors.slice(0, 5).map((error, index) => {
-                    const isValidationError = error.errors && Array.isArray(error.errors);
+                    const isValidationError =
+                      error.errors && Array.isArray(error.errors);
                     const isBackendError = error.error;
 
                     return (
                       <div key={index} className="mb-2">
                         {isValidationError ? (
                           <>
-                            <p className="font-medium">Baris {error.row || 'Tidak diketahui'}:</p>
+                            <p className="font-medium">
+                              Baris {error.row || "Tidak diketahui"}:
+                            </p>
                             <ul className="list-disc list-inside ml-4">
                               {error.errors.map((err, i) => (
                                 <li key={i}>{err}</li>
@@ -721,12 +810,17 @@ const DatabaseAdmin = () => {
                             <p className="font-medium">Error Server:</p>
                             <ul className="list-disc list-inside ml-4">
                               <li>
-                                <strong>Error:</strong> {error.error || 'Error tidak diketahui'}
+                                <strong>Error:</strong>{" "}
+                                {error.error || "Error tidak diketahui"}
                               </li>
                               {error.data && (
                                 <>
-                                  <li><strong>Nama:</strong> {error.data.nama}</li>
-                                  <li><strong>NIM:</strong> {error.data.nim}</li>
+                                  <li>
+                                    <strong>Nama:</strong> {error.data.nama}
+                                  </li>
+                                  <li>
+                                    <strong>NIM:</strong> {error.data.nim}
+                                  </li>
                                 </>
                               )}
                             </ul>
@@ -742,7 +836,9 @@ const DatabaseAdmin = () => {
                   )}
                   <div className="mt-3 p-3 bg-yellow-100 border border-yellow-400 rounded">
                     <p className="text-yellow-800 text-sm">
-                      <strong>⚠️ Perhatian:</strong> Silahkan ganti data yang sudah terdaftar atau hapus dari daftar sebelum mengimport ulang.
+                      <strong>⚠️ Perhatian:</strong> Silahkan ganti data yang
+                      sudah terdaftar atau hapus dari daftar sebelum mengimport
+                      ulang.
                     </p>
                   </div>
                 </div>
@@ -913,7 +1009,7 @@ const DatabaseAdmin = () => {
                     Hapus Duplikat
                   </button>
                 )}
-                
+
                 <button
                   onClick={handleImportSubmit}
                   disabled={importData.length === 0 || importMutation.isLoading}
@@ -1022,8 +1118,35 @@ const DatabaseAdmin = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {(currentPage - 1) * pageSize + index + 1}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {item.nama}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-gray-900">
+                              {item.nama}
+                            </span>
+                            <div className="flex items-center mt-1">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                  item.jenjang === "muda"
+                                    ? "bg-green-100 text-green-800"
+                                    : item.jenjang === "madya"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-yellow-100 text-yellow-800"
+                                }`}
+                              >
+                                {item.jenjang === "muda"
+                                  ? "Muda"
+                                  : item.jenjang === "madya"
+                                  ? "Madya"
+                                  : "Bhakti"}
+                              </span>
+                              <span className="ml-2 text-xs text-gray-500">
+                                Dilantik:{" "}
+                                {new Date(
+                                  item.tanggalDilantik
+                                ).toLocaleDateString("id-ID")}
+                              </span>
+                            </div>
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {item.noInduk}
@@ -1065,7 +1188,9 @@ const DatabaseAdmin = () => {
                         colSpan="9"
                         className="px-6 py-4 text-center text-sm text-gray-500"
                       >
-                        {isLoading ? "Memuat data..." : "Tidak ada data yang ditemukan"}
+                        {isLoading
+                          ? "Memuat data..."
+                          : "Tidak ada data yang ditemukan"}
                       </td>
                     </tr>
                   )}

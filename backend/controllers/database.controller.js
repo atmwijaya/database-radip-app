@@ -42,6 +42,12 @@ export async function createMember(req, res, next) {
     if (existingMember) {
       return res.status(400).json({ message: "NIM sudah terdaftar" });
     }
+
+    const newMemberData = {
+      ...memberData,
+      jenjang: memberData.jenjang || "muda",
+      tanggalDilantik: memberData.tanggalDilantik || new Date()
+    };
     
     const newMember = new Member(memberData);
     const savedMember = await newMember.save();
@@ -89,6 +95,34 @@ export async function importMembers(req, res, next) {
           continue;
         }
 
+        if (memberData.jenjang && !["muda", "madya", "bhakti"].includes(memberData.jenjang)) {
+          results.errors.push({
+            nim: nim,
+            nama: memberData.nama || "Tidak diketahui",
+            error: "Jenjang harus: muda, madya, atau bhakti",
+          });
+          continue;
+        }
+
+        if (!memberData.tanggalDilantik) {
+          results.errors.push({
+            nim: nim,
+            nama: memberData.nama || "Tidak diketahui",
+            error: "Tanggal dilantik harus diisi",
+          });
+          continue;
+        }
+
+        const tanggalDilantik = new Date(memberData.tanggalDilantik);
+        if (isNaN(tanggalDilantik.getTime())) {
+          results.errors.push({
+            nim: nim,
+            nama: memberData.nama || "Tidak diketahui",
+            error: "Format tanggal dilantik tidak valid",
+          });
+          continue;
+        }
+
         if (importNIMs.has(nim)) {
           duplicateInImport.add(nim);
           results.duplicates++;
@@ -111,7 +145,16 @@ export async function importMembers(req, res, next) {
           continue;
         }
 
-        const member = new Member(memberData);
+        const importMemberData = {
+          ...memberData,
+          jenjang: memberData.jenjang || "muda",
+          tanggalDilantik: tanggalDilantik,
+          // Ensure other fields have defaults
+          noInduk: memberData.noInduk || "-",
+          pandega: memberData.pandega || "-",
+        };
+
+        const member = new Member(importMemberData);
         await member.save();
         results.success++;
         existingNIMs.add(nim);
@@ -172,6 +215,19 @@ export async function updateMember(req, res, next) {
       if (memberWithSameNIM) {
         return res.status(400).json({ message: "NIM sudah terdaftar" });
       }
+    }
+
+    if (memberData.jenjang && !["muda", "madya", "bhakti"].includes(memberData.jenjang)) {
+      return res.status(400).json({ message: "Jenjang harus: muda, madya, atau bhakti" });
+    }
+    
+    // Validasi tanggal dilantik jika diupdate
+    if (memberData.tanggalDilantik) {
+      const tanggalDilantik = new Date(memberData.tanggalDilantik);
+      if (isNaN(tanggalDilantik.getTime())) {
+        return res.status(400).json({ message: "Format tanggal dilantik tidak valid" });
+      }
+      memberData.tanggalDilantik = tanggalDilantik;
     }
     
     const updatedMember = await Member.findByIdAndUpdate(id, memberData, {

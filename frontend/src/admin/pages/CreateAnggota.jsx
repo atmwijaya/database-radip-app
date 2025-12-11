@@ -116,6 +116,8 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
     fakultas: "",
     jurusan: "",
     angkatan: "",
+    jenjang: "muda",
+    tanggalDilantik: "",
     tempatLahir: "",
     tanggalLahir: "",
     displayTanggalLahir: "",
@@ -129,6 +131,8 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
     fakultas: "",
     jurusan: "",
     angkatan: "",
+    jenjang: "",
+    tanggalDilantik: "",
     tempatLahir: "",
     tanggalLahir: "",
   });
@@ -205,6 +209,8 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
       fakultas: "",
       jurusan: "",
       angkatan: "",
+      jenjang: "",
+      tanggalDilantik: "",
       tempatLahir: "",
       tanggalLahir: "",
     };
@@ -234,6 +240,19 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
 
     if (!formData.angkatan) {
       newErrors.angkatan = "Angkatan wajib diisi";
+      valid = false;
+    }
+
+    if (!formData.jenjang) {
+      newErrors.jenjang = "Jenjang wajib dipilih";
+      valid = false;
+    } else if (!["muda", "madya", "bhakti"].includes(formData.jenjang)) {
+      newErrors.jenjang = "Jenjang harus: muda, madya, atau bhakti";
+      valid = false;
+    }
+
+    if (!formData.tanggalDilantik) {
+      newErrors.tanggalDilantik = "Tanggal dilantik wajib diisi";
       valid = false;
     }
 
@@ -276,6 +295,8 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
         fakultas: formData.fakultas,
         jurusan: formData.jurusan,
         angkatan: formData.angkatan,
+        jenjang: formData.jenjang,
+        tanggalDilantik: formData.tanggalDilantik,
         ttl,
         pandega: formData.pandega || "-",
         tanggalLahir: formData.tanggalLahir,
@@ -304,7 +325,7 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
       }
 
       // Redirect to database page
-      navigate("/admin/database");
+      navigate("/admin/database-anggota");
     } catch (err) {
       if (err.message.includes("NIM sudah terdaftar")) {
         setErrors((prev) => ({ ...prev, nim: "NIM sudah terdaftar" }));
@@ -606,6 +627,75 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
                   </div>
                 </div>
 
+                {/* Row 6: Jenjang & Tanggal Dilantik */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Jenjang<span className="text-red-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData({ ...formData, jenjang: "muda" })
+                        }
+                        className={`py-2 px-3 rounded-lg text-sm font-medium ${
+                          formData.jenjang === "muda"
+                            ? "bg-green-100 text-green-800 border-2 border-green-500"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        Muda
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData({ ...formData, jenjang: "madya" })
+                        }
+                        className={`py-2 px-3 rounded-lg text-sm font-medium ${
+                          formData.jenjang === "madya"
+                            ? "bg-red-100 text-red-800 border-2 border-red-500"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        Madya
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData({ ...formData, jenjang: "bhakti" })
+                        }
+                        className={`py-2 px-3 rounded-lg text-sm font-medium ${
+                          formData.jenjang === "bhakti"
+                            ? "bg-yellow-100 text-yellow-800 border-2 border-yellow-500"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        Bhakti
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tanggal Dilantik<span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      name="tanggalDilantik"
+                      value={formData.tanggalDilantik || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          tanggalDilantik: e.target.value,
+                        })
+                      }
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                      required
+                    />
+                  </div>
+                </div>
+
                 {/* Action Buttons */}
                 <div className="flex flex-col-reverse md:flex-row justify-between gap-4 pt-6 border-t">
                   <button
@@ -657,7 +747,7 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
             <div className="flex justify-between items-center">
               <button
                 type="button"
-                onClick={() => navigate("/admin/database")}
+                onClick={() => navigate("/admin/database-anggota")}
                 className="px-4 py-2 text-gray-600"
               >
                 Batal

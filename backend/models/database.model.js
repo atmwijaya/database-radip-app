@@ -27,6 +27,17 @@ const memberSchema = new mongoose.Schema({
     type: Number, 
     required: true 
   },
+  jenjang: { 
+    type: String, 
+    enum: ["muda", "madya", "bhakti"],
+    default: "muda",
+    required: true 
+  },
+  tanggalDilantik: { 
+    type: Date,
+    required: true,
+    default: Date.now
+  },
   ttl: { 
     type: String, 
     required: true 
