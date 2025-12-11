@@ -549,7 +549,7 @@ const DatabaseAdmin = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <NavbarAdmin />
 
-      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full">
+      <main className="flex-grow flex flex-col mx-auto px-4 sm:px-6 py-8 w-full">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <h1 className="text-2xl font-bold text-gray-800">
             Database Anggota
