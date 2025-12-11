@@ -7,7 +7,7 @@ const Footer = () => {
         <p className="text-white font-medium text-sm sm:text-base">
           2025 Copyright Racana Diponegoro
         </p>
-        <span className="text-white font-medium text-sm sm:text-base">| Version 1.1.2</span>
+        <span className="text-white font-medium text-sm sm:text-base">| Version 1.2.1</span>
       </div>
     </footer>
   );

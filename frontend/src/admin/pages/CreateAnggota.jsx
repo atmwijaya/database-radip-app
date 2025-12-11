@@ -610,7 +610,7 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
                 <div className="flex flex-col-reverse md:flex-row justify-between gap-4 pt-6 border-t">
                   <button
                     type="button"
-                    onClick={() => navigate("/admin/database")}
+                    onClick={() => navigate("/admin/database-anggota")}
                     className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 font-medium"
                   >
                     Batal
