@@ -5,6 +5,8 @@ import Beranda from "./pages/beranda.jsx";
 import DatabaseAnggota from "./pages/databaseAnggota.jsx";
 import FAQ from "./pages/faq.jsx";
 import BerandaAdmin from "./admin/pages/berandaAdmin.jsx";
+import CreateAnggota from "./admin/pages/CreateAnggota.jsx";
+import EditAnggota from "./admin/pages/EditAnggota.jsx";
 import DatabaseAdmin from "./admin/pages/databaseAdmin.jsx";
 import LoginPage from "./admin/pages/loginPage.jsx";
 import { checkTokenExpiration } from "../../backend/utils/auth.js";
@@ -50,6 +52,22 @@ function App() {
           <DatabaseAdmin />
           </ProtectedRoute>
           } 
+        />
+        <Route
+          path="/admin/create-anggota"
+          element={
+            <ProtectedRoute>
+              <CreateAnggota />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/edit-anggota/:id"
+          element={
+            <ProtectedRoute>
+              <EditAnggota />
+            </ProtectedRoute>
+          }
         />
       </Routes>
     </Router>

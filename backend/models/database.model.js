@@ -1,9 +1,4 @@
 import mongoose from "mongoose";
-import { Schema } from "mongoose";
-import AutoIncrementFactory from "mongoose-sequence";
-
-// Pass mongoose to plugin
-const AutoIncrement = AutoIncrementFactory(mongoose);
 
 const memberSchema = new mongoose.Schema({
   nama: { 

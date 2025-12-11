@@ -1,5 +1,6 @@
 import Member from "../models/database.model.js";
 
+// Get all members
 export async function getDatabase(req, res, next) {
   try {
     const members = await Member.find().sort({ createdAt: -1 });
@@ -9,9 +10,39 @@ export async function getDatabase(req, res, next) {
   }
 }
 
+// Get single member by ID
+export async function getMemberById(req, res, next) {
+  try {
+    const { id } = req.params;
+    
+    // Validate ID format
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "ID anggota tidak valid" });
+    }
+    
+    const member = await Member.findById(id);
+    
+    if (!member) {
+      return res.status(404).json({ message: "Anggota tidak ditemukan" });
+    }
+    
+    res.status(200).json(member);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Create new member
 export async function createMember(req, res, next) {
   try {
     const memberData = req.body;
+    
+    // Check if NIM already exists
+    const existingMember = await Member.findOne({ nim: memberData.nim });
+    if (existingMember) {
+      return res.status(400).json({ message: "NIM sudah terdaftar" });
+    }
+    
     const newMember = new Member(memberData);
     const savedMember = await newMember.save();
     res.status(201).json(savedMember);
@@ -23,6 +54,7 @@ export async function createMember(req, res, next) {
   }
 }
 
+// Import multiple members
 export async function importMembers(req, res, next) {
   try {
     const { data } = req.body;
@@ -46,13 +78,23 @@ export async function importMembers(req, res, next) {
 
     for (const memberData of data) {
       try {
-        const nim = memberData.nim.toString();
+        const nim = memberData.nim ? memberData.nim.toString() : "";
+        
+        if (!nim) {
+          results.errors.push({
+            nim: nim,
+            nama: memberData.nama || "Tidak diketahui",
+            error: "NIM tidak valid atau kosong",
+          });
+          continue;
+        }
+
         if (importNIMs.has(nim)) {
           duplicateInImport.add(nim);
           results.duplicates++;
           results.errors.push({
             nim: nim,
-            nama: memberData.nama,
+            nama: memberData.nama || "Tidak diketahui",
             error: "Duplikat dalam file import",
           });
           continue;
@@ -63,7 +105,7 @@ export async function importMembers(req, res, next) {
           results.duplicates++;
           results.errors.push({
             nim: nim,
-            nama: memberData.nama,
+            nama: memberData.nama || "Tidak diketahui",
             error: "NIM sudah terdaftar di database",
           });
           continue;
@@ -77,55 +119,85 @@ export async function importMembers(req, res, next) {
         // Handle duplicate key error (MongoDB error code 11000)
         if (err.code === 11000) {
           results.errors.push({
-            nim: memberData.nim,
-            nama: memberData.nama,
+            nim: memberData.nim || "Tidak diketahui",
+            nama: memberData.nama || "Tidak diketahui",
             error: "NIM sudah terdaftar",
           });
         } else {
           results.errors.push({
-            nim: memberData.nim,
-            nama: memberData.nama,
+            nim: memberData.nim || "Tidak diketahui",
+            nama: memberData.nama || "Tidak diketahui",
             error: err.message,
           });
         }
       }
     }
 
-    let message = `Import selesai. Berhasil: ${results.success}, `;
-    if (results.duplicates > 0) {
-      message += `Duplikat: ${results.duplicates}, `;
-    }
-    message += `Gagal: ${results.errors.length - results.duplicates}`;
-
-    res.status(200).json({
+    const response = {
       message: `Import selesai. Berhasil: ${results.success}, Gagal: ${results.errors.length}`,
       details: results,
-      duplicatesInImport: Array.from(duplicateInImport)
-    });
+    };
+
+    // If there are duplicates within the import file, add them to response
+    if (duplicateInImport.size > 0) {
+      response.duplicatesInImport = Array.from(duplicateInImport);
+    }
+
+    res.status(200).json(response);
   } catch (err) {
     next(err);
   }
 }
 
+// Update member
 export async function updateMember(req, res, next) {
   try {
     const { id } = req.params;
     const memberData = req.body;
-    const updatedMember = await Member.findByIdAndUpdate(id, memberData, {
-      new: true,
-    });
-    if (!updatedMember) {
+    
+    // Validate ID format
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "ID anggota tidak valid" });
+    }
+    
+    // Check if NIM is being changed and if new NIM already exists
+    const existingMember = await Member.findById(id);
+    if (!existingMember) {
       return res.status(404).json({ message: "Anggota tidak ditemukan" });
     }
+    
+    // If NIM is being changed, check if new NIM already exists
+    if (memberData.nim && memberData.nim !== existingMember.nim) {
+      const memberWithSameNIM = await Member.findOne({ nim: memberData.nim });
+      if (memberWithSameNIM) {
+        return res.status(400).json({ message: "NIM sudah terdaftar" });
+      }
+    }
+    
+    const updatedMember = await Member.findByIdAndUpdate(id, memberData, {
+      new: true,
+      runValidators: true
+    });
+    
     res.status(200).json(updatedMember);
   } catch (err) {
+    if (err.code === 11000) {
+      err.message = "NIM sudah terdaftar";
+    }
     next(err);
   }
 }
 
+// Delete member
 export async function deleteMember(req, res, next) {
   try {
     const { id } = req.params;
+    
+    // Validate ID format
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "ID anggota tidak valid" });
+    }
+    
     const deletedMember = await Member.findByIdAndDelete(id);
     if (!deletedMember) {
       return res.status(404).json({ message: "Anggota tidak ditemukan" });

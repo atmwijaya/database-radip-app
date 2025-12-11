@@ -1,39 +1,50 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Navbar from '../components/navbar';
 import Footer from '../components/footer';
 import { Search } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// Fetch function yang akan digunakan oleh React Query
+const fetchMembers = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/db`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Gagal mengambil data anggota');
+    }
+    
+    return await response.json();
+  } catch (err) {
+    throw new Error(err.message);
+  }
+};
+
 const DatabaseAnggota = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [members, setMembers] = useState([]);
   const [filteredMembers, setFilteredMembers] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-  // Fetch all members from backend
-  const fetchMembers = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/api/db`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Gagal mengambil data anggota');
-      }
-      
-      const result = await response.json();
-      setMembers(result);
-      setLoading(false);
-    } catch (err) {
-      setError(err.message);
-      setLoading(false);
-    }
-  };
+  // Gunakan React Query untuk fetching data
+  const { 
+    data: members = [], 
+    isLoading, 
+    isError, 
+    error 
+  } = useQuery({
+    queryKey: ['members', 'public'], // Key unik untuk cache
+    queryFn: fetchMembers,
+    staleTime: 5 * 60 * 1000, // Data dianggap segar selama 5 menit
+    cacheTime: 10 * 60 * 1000, // Cache disimpan selama 10 menit
+    refetchOnWindowFocus: false, // Tidak refetch saat window focus
+    refetchOnMount: false, // Tidak refetch saat komponen mount ulang
+    retry: 1, // Coba ulang 1 kali jika gagal
+  });
 
   // Handle search button click
   const handleSearch = () => {
@@ -45,13 +56,13 @@ const DatabaseAnggota = () => {
 
     setHasSearched(true);
     const filtered = members.filter(member =>
-      member.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      member.nama?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (member.noInduk && member.noInduk.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      member.nim.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.fakultas.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.jurusan.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.angkatan.toString().includes(searchQuery) ||
-      member.ttl.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      member.nim?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      member.fakultas?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      member.jurusan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      member.angkatan?.toString().includes(searchQuery) ||
+      member.ttl?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (member.pandega && member.pandega.toLowerCase().includes(searchQuery.toLowerCase()))
     );
     setFilteredMembers(filtered);
@@ -63,10 +74,6 @@ const DatabaseAnggota = () => {
       handleSearch();
     }
   };
-
-  useEffect(() => {
-    fetchMembers();
-  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -103,20 +110,20 @@ const DatabaseAnggota = () => {
           </div>
 
           {/* Loading and error states */}
-          {loading && (
+          {isLoading && (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
             </div>
           )}
 
-          {error && (
+          {isError && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-              {error}
+              {error?.message || 'Gagal mengambil data anggota'}
             </div>
           )}
 
           {/* Results section */}
-          {hasSearched && !loading && (
+          {hasSearched && !isLoading && (
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               {filteredMembers.length > 0 ? (
                 <>
@@ -222,7 +229,7 @@ const DatabaseAnggota = () => {
           )}
 
           {/* Initial state - before search */}
-          {!hasSearched && !loading && (
+          {!hasSearched && !isLoading && (
             <div className="text-center py-8 sm:py-12">
               <div className="text-gray-400 mb-3 sm:mb-4">
                 <Search className="w-12 h-12 sm:w-16 sm:h-16 mx-auto" />

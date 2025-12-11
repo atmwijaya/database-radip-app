@@ -1,83 +1,50 @@
 import React, { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate } from "react-router-dom";
 import NavbarAdmin from "../components/navbarAdmin";
 import Footer from "../../components/footer";
-import { checkTokenExpiration, logout } from "../../../../backend/utils/auth";
-import { useNavigate } from "react-router-dom";
+import { checkTokenExpiration } from "../../../../backend/utils/auth";
 import * as XLSX from "xlsx";
 
-// Data fakultas dan jurusan
+const monthNames = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+];
+
 const fakultasJurusan = {
   Hukum: ["Hukum"],
   "Ekonomika dan Bisnis": [
-    "Akuntansi",
-    "Ilmu Ekonomi",
-    "Manajemen",
-    "Ekonomi Islam",
-    "Bisnis Digital",
+    "Akuntansi", "Ilmu Ekonomi", "Manajemen", "Ekonomi Islam", "Bisnis Digital"
   ],
   Teknik: [
-    "Teknik Sipil",
-    "Arsitektur",
-    "Teknik Kimia",
-    "Teknik Mesin",
-    "Teknik Elektro",
-    "Perencanaan Wilayah dan Kota",
-    "Teknik Industri",
-    "Teknik Lingkungan",
-    "Teknik Perkapalan",
-    "Teknik Geologi",
-    "Teknik Geodesi",
-    "Teknik Komputer",
+    "Teknik Sipil", "Arsitektur", "Teknik Kimia", "Teknik Mesin", "Teknik Elektro",
+    "Perencanaan Wilayah dan Kota", "Teknik Industri", "Teknik Lingkungan",
+    "Teknik Perkapalan", "Teknik Geologi", "Teknik Geodesi", "Teknik Komputer"
   ],
   Kedokteran: [
-    "Kedokteran",
-    "Ilmu Gizi",
-    "Keperawatan",
-    "Farmasi",
-    "Kedokteran Gigi",
+    "Kedokteran", "Ilmu Gizi", "Keperawatan", "Farmasi", "Kedokteran Gigi"
   ],
   "Peternakan dan Pertanian": [
-    "Peternakan",
-    "Agribisnis",
-    "Agroteknologi",
-    "Teknologi Pangan",
-    "Akuakultur",
+    "Peternakan", "Agribisnis", "Agroteknologi", "Teknologi Pangan", "Akuakultur"
   ],
   "Ilmu Budaya": [
-    "Sastra Inggris",
-    "Sastra Indonesia",
-    "Sejarah",
-    "Ilmu Perpustakaan",
-    "Antropologi Sosial",
-    "Bahasa dan Kebudayaan Jepang",
+    "Sastra Inggris", "Sastra Indonesia", "Sejarah", "Ilmu Perpustakaan",
+    "Antropologi Sosial", "Bahasa dan Kebudayaan Jepang"
   ],
   "Ilmu Sosial dan Politik": [
-    "Administrasi Publik",
-    "Administrasi Bisnis",
-    "Ilmu Pemerintahan",
-    "Ilmu Komunikasi",
-    "Hubungan Internasional",
+    "Administrasi Publik", "Administrasi Bisnis", "Ilmu Pemerintahan",
+    "Ilmu Komunikasi", "Hubungan Internasional"
   ],
   "Sains dan Matematika": [
-    "Matematika",
-    "Biologi",
-    "Kimia",
-    "Fisika",
-    "Statistika",
-    "Bioteknologi",
-    "Informatika",
+    "Matematika", "Biologi", "Kimia", "Fisika", "Statistika",
+    "Bioteknologi", "Informatika"
   ],
   "Kesehatan Masyarakat": [
-    "Kesehatan Masyarakat",
-    "Kesehatan dan Keselamatan Kerja",
+    "Kesehatan Masyarakat", "Kesehatan dan Keselamatan Kerja"
   ],
   "Perikanan dan Ilmu Kelautan": [
-    "Akuakultur",
-    "Ilmu Kelautan",
-    "Manajemen Sumber Daya Perairan",
-    "Oseanografi",
-    "Perikanan Tangkap",
-    "Teknologi Hasil Perikanan",
+    "Akuakultur", "Ilmu Kelautan", "Manajemen Sumber Daya Perairan",
+    "Oseanografi", "Perikanan Tangkap", "Teknologi Hasil Perikanan"
   ],
   Psikologi: ["Psikologi"],
   Vokasi: [
@@ -90,102 +57,178 @@ const fakultasJurusan = {
     "Akuntansi Perpajakan",
     "Manajemen dan Administrasi Logistik",
     "Bahasa Terapan Asing",
-    "Informasi dan Hubungan Masyarakat",
-  ],
+    "Informasi dan Hubungan Masyarakat"
+  ]
 };
 
-const monthNames = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// Fetch function untuk React Query
+const fetchMembersAdmin = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/db`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Gagal mengambil data");
+    }
+
+    return await response.json();
+  } catch (err) {
+    throw new Error(err.message);
+  }
+};
+
+// Delete function untuk React Query Mutation
+const deleteMember = async (id) => {
+  const token = localStorage.getItem("token");
+  const response = await fetch(`${API_BASE_URL}/api/db/${id}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || "Gagal menghapus data");
+  }
+
+  return response.json();
+};
+
+// Import function untuk React Query Mutation
+const importMembers = async (data) => {
+  const token = localStorage.getItem("token");
+  const response = await fetch(`${API_BASE_URL}/api/db/import`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ data }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || "Gagal mengimport data");
+  }
+
+  return response.json();
+};
 
 const DatabaseAdmin = () => {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({
     key: "nama",
     direction: "asc",
   });
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editData, setEditData] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [dataToDelete, setDataToDelete] = useState(null);
-  const [jurusanOptions, setJurusanOptions] = useState([]);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importData, setImportData] = useState([]);
   const [importErrors, setImportErrors] = useState([]);
-  const [isImporting, setIsImporting] = useState(false);
   const navigate = useNavigate();
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  
+  // Gunakan Query Client untuk invalidate cache
+  const queryClient = useQueryClient();
 
-  const [formData, setFormData] = useState({
-    nama: "",
-    noInduk: "",
-    nim: "",
-    fakultas: "",
-    jurusan: "",
-    angkatan: "",
-    tempatLahir: "",
-    tanggalLahir: "",
-    displayTanggalLahir: "",
-    dateValue: "",
-    pandega: "",
+  // Gunakan React Query untuk fetching data
+  const { 
+    data: members = [], 
+    isLoading, 
+    isError,
+    error: fetchError 
+  } = useQuery({
+    queryKey: ['members', 'admin'], // Key unik untuk cache admin
+    queryFn: fetchMembersAdmin,
+    staleTime: 5 * 60 * 1000, // Data dianggap segar selama 5 menit
+    cacheTime: 10 * 60 * 1000, // Cache disimpan selama 10 menit
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 1,
   });
 
-  const [errors, setErrors] = useState({
-    nama: "",
-    nim: "",
-    fakultas: "",
-    jurusan: "",
-    angkatan: "",
-    tempatLahir: "",
-    tanggalLahir: "",
-  });
-
-  // Fetch data from backend
-  const fetchData = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("No authentication token found");
-      }
-
-      setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/api/db`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Gagal mengambil data");
-      }
-
-      const result = await response.json();
-      setData(result);
-      setLoading(false);
-    } catch (err) {
-      setError(err.message);
-      setLoading(false);
+  // Mutation untuk delete member
+  const deleteMutation = useMutation({
+    mutationFn: deleteMember,
+    onSuccess: () => {
+      // Invalidate dan refetch query members
+      queryClient.invalidateQueries(['members', 'admin']);
+      setShowDeleteModal(false);
+      setDataToDelete(null);
+      setSuccessMessage("Data berhasil dihapus!");
+      setTimeout(() => setSuccessMessage(null), 3000);
+    },
+    onError: (error) => {
+      setError(error.message);
+      setTimeout(() => setError(null), 3000);
     }
-  };
+  });
+
+  // Mutation untuk import members
+  const importMutation = useMutation({
+    mutationFn: importMembers,
+    onSuccess: (result) => {
+      // Invalidate dan refetch query members
+      queryClient.invalidateQueries(['members', 'admin']);
+      
+      // Handle error dari backend
+      if (result.details?.errors?.length > 0) {
+        const backendErrors = result.details.errors.map((err, index) => ({
+          row: index + 1,
+          error: err.error || "Error tidak diketahui",
+          data: err
+        }));
+        setImportErrors(backendErrors);
+        
+        if (result.details.success > 0) {
+          setSuccessMessage(
+            `Berhasil mengimport ${result.details.success} data, tetapi ${result.details.errors.length} data gagal.`
+          );
+        }
+      } else {
+        let successCount = result.details?.success || result.inserted || result.success || importData.length;
+        let duplicateCount = result.details?.duplicates || result.duplicates || 0;
+
+        if (duplicateCount > 0) {
+          setSuccessMessage(
+            `Berhasil mengimport ${successCount} data! ⚠️ ${duplicateCount} data duplikat tidak diimport.`
+          );
+        } else {
+          setSuccessMessage(`✅ Berhasil mengimport ${successCount} data!`);
+        }
+
+        // Reset modal jika tidak ada error
+        if (result.details?.errors?.length === 0) {
+          setShowImportModal(false);
+          setImportData([]);
+          setImportErrors([]);
+        }
+      }
+
+      setTimeout(() => {
+        setSuccessMessage(null);
+        setError(null);
+      }, 5000);
+    },
+    onError: (error) => {
+      setError(error.message || "Terjadi kesalahan saat mengimport data");
+      setTimeout(() => setError(null), 5000);
+    }
+  });
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -199,7 +242,6 @@ const DatabaseAdmin = () => {
     if (!token || !checkTokenExpiration()) {
       handleLogout();
     }
-    fetchData();
 
     // Set up token expiration check every minute
     const interval = setInterval(() => {
@@ -224,7 +266,7 @@ const DatabaseAdmin = () => {
 
   // Sorted data
   const sortedData = React.useMemo(() => {
-    let sortableData = [...data];
+    let sortableData = [...members];
     if (sortConfig !== null) {
       sortableData.sort((a, b) => {
         if (a[sortConfig.key] < b[sortConfig.key]) {
@@ -237,19 +279,19 @@ const DatabaseAdmin = () => {
       });
     }
     return sortableData;
-  }, [data, sortConfig]);
+  }, [members, sortConfig]);
 
   // Filter data berdasarkan search term
   const filteredData = sortedData.filter((item) => {
     return (
-      item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.noInduk &&
         item.noInduk.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      item.nim.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.fakultas.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.jurusan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.angkatan.toString().includes(searchTerm) ||
-      item.ttl.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.nim?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.fakultas?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.jurusan?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.angkatan?.toString().includes(searchTerm) ||
+      item.ttl?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.pandega &&
         item.pandega.toLowerCase().includes(searchTerm.toLowerCase()))
     );
@@ -262,265 +304,6 @@ const DatabaseAdmin = () => {
     currentPage * pageSize
   ) || [];
 
-  // Handle input change
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-
-    if (name === "nim") {
-      if (value.length > 14) return;
-      if (value && !/^\d+$/.test(value)) return;
-    }
-
-    if (name === "nama") {
-      if (!/^[a-zA-Z\s]*$/.test(value)) return;
-    }
-
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-
-    setErrors({
-      ...errors,
-      [name]: "",
-    });
-  };
-
-  // Handle date change
-  const handleDateChange = (e) => {
-    const date = new Date(e.target.value);
-    const day = date.getDate();
-    const month = date.getMonth();
-    const year = date.getFullYear();
-
-    const formattedDate = `${day} ${monthNames[month]} ${year}`;
-    const dbFormat = `${day}/${month + 1}/${year}`;
-
-    setFormData({
-      ...formData,
-      tanggalLahir: dbFormat,
-      displayTanggalLahir: formattedDate,
-      dateValue: e.target.value,
-    });
-
-    setErrors({
-      ...errors,
-      tanggalLahir: "",
-    });
-  };
-
-  // Handle fakultas change
-  const handleFakultasChange = (e) => {
-    const fakultas = e.target.value;
-    setFormData({
-      ...formData,
-      fakultas,
-      jurusan: "",
-    });
-
-    setJurusanOptions(fakultas ? fakultasJurusan[fakultas] || [] : []);
-  };
-
-  // Validasi form
-  const validateForm = () => {
-    let valid = true;
-    const newErrors = {
-      nama: "",
-      nim: "",
-      fakultas: "",
-      jurusan: "",
-      angkatan: "",
-      tempatLahir: "",
-      tanggalLahir: "",
-    };
-
-    if (!formData.nama.trim()) {
-      newErrors.nama = "Nama lengkap wajib diisi";
-      valid = false;
-    }
-
-    if (!formData.nim) {
-      newErrors.nim = "NIM wajib diisi";
-      valid = false;
-    } else if (formData.nim.length < 13 || formData.nim.length > 14) {
-      newErrors.nim = "NIM harus 13 atau 14 digit";
-      valid = false;
-    }
-
-    if (!formData.fakultas) {
-      newErrors.fakultas = "Fakultas wajib dipilih";
-      valid = false;
-    }
-
-    if (!formData.jurusan) {
-      newErrors.jurusan = "Jurusan wajib dipilih";
-      valid = false;
-    }
-
-    if (!formData.angkatan) {
-      newErrors.angkatan = "Angkatan wajib diisi";
-      valid = false;
-    }
-
-    if (!formData.tempatLahir) {
-      newErrors.tempatLahir = "Tempat lahir wajib diisi";
-      valid = false;
-    }
-
-    if (!formData.tanggalLahir) {
-      newErrors.tanggalLahir = "Tanggal lahir wajib diisi";
-      valid = false;
-    }
-
-    setErrors(newErrors);
-    return valid;
-  };
-
-  // Handle form submit (add/edit)
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!validateForm()) return;
-
-    try {
-      setIsSubmitting(true);
-      let response;
-      const token = localStorage.getItem("token");
-      if (!token) {
-        handleLogout();
-        return;
-      }
-
-      const [day, month, year] = formData.tanggalLahir.split("/");
-      const formattedDate = `${day} ${monthNames[parseInt(month) - 1]} ${year}`;
-      const ttl = `${formData.tempatLahir}, ${formattedDate}`;
-
-      const memberData = {
-        nama: formData.nama,
-        noInduk: formData.noInduk || "-",
-        nim: formData.nim,
-        fakultas: formData.fakultas,
-        jurusan: formData.jurusan,
-        angkatan: formData.angkatan,
-        ttl,
-        pandega: formData.pandega || "-",
-        tanggalLahir: formData.tanggalLahir,
-      };
-
-      if (editData) {
-        response = await fetch(`${API_BASE_URL}/api/db/${editData._id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(memberData),
-        });
-      } else {
-        response = await fetch(`${API_BASE_URL}/api/db`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(memberData),
-        });
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Terjadi kesalahan");
-      }
-
-      await fetchData();
-      setShowAddForm(false);
-      resetForm();
-      setSuccessMessage(
-        editData ? "Data berhasil diperbaharui!" : "Data berhasil ditambahkan!"
-      );
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err) {
-      if (err.message.includes("NIM sudah terdaftar")) {
-        setErrors((prev) => ({ ...prev, nim: "NIM sudah terdaftar" }));
-      } else {
-        setError(err.message);
-        setTimeout(() => setError(null), 3000);
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Reset form
-  const resetForm = () => {
-    setFormData({
-      nama: "",
-      noInduk: "",
-      nim: "",
-      fakultas: "",
-      jurusan: "",
-      angkatan: "",
-      tempatLahir: "",
-      tanggalLahir: "",
-      displayTanggalLahir: "",
-      dateValue: "",
-      pandega: "",
-    });
-    setJurusanOptions([]);
-    setErrors({
-      nama: "",
-      nim: "",
-      fakultas: "",
-      jurusan: "",
-      angkatan: "",
-      tempatLahir: "",
-      tanggalLahir: "",
-    });
-    setError(null);
-  };
-
-  // Handle edit - split TTL into birthplace and date
-  const handleEdit = (item) => {
-    setEditData(item);
-
-    const [tempatLahir = "", tanggalLahir = ""] = item.ttl.split(", ");
-
-    // Convert format DD/MM/YYYY ke format date input (YYYY-MM-DD)
-    let dateValue = "";
-    if (tanggalLahir) {
-      const dateParts = tanggalLahir.trim().split(" ");
-      if (dateParts.length === 3) {
-        const day = dateParts[0];
-        const month = monthNames.indexOf(dateParts[1]);
-        const year = dateParts[2];
-        if (month !== -1) {
-          dateValue = `${year}-${(month + 1)
-            .toString()
-            .padStart(2, "0")}-${day.padStart(2, "0")}`;
-        }
-      }
-    }
-
-    setFormData({
-      nama: item.nama,
-      noInduk: item.noInduk === "-" ? "" : item.noInduk,
-      nim: item.nim,
-      fakultas: item.fakultas,
-      jurusan: item.jurusan,
-      angkatan: item.angkatan,
-      tempatLahir: tempatLahir || "",
-      tanggalLahir: item.tanggalLahir || "",
-      displayTanggalLahir: tanggalLahir || "",
-      dateValue: dateValue,
-      pandega: item.pandega === "-" ? "" : item.pandega,
-    });
-
-    setJurusanOptions(
-      item.fakultas ? fakultasJurusan[item.fakultas] || [] : []
-    );
-    setShowAddForm(true);
-  };
-
   // Handle delete confirmation
   const confirmDelete = (item) => {
     setDataToDelete(item);
@@ -528,35 +311,9 @@ const DatabaseAdmin = () => {
   };
 
   // Handle delete
-  const handleDelete = async () => {
-    try {
-      setIsDeleting(true);
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${API_BASE_URL}/api/db/${dataToDelete._id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal menghapus data");
-      }
-
-      await fetchData();
-      setShowDeleteModal(false);
-      setDataToDelete(null);
-      setSuccessMessage("Data berhasil dihapus!");
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err) {
-      setError(err.message);
-      setTimeout(() => setError(null), 3000);
-    } finally {
-      setIsDeleting(false);
+  const handleDelete = () => {
+    if (dataToDelete) {
+      deleteMutation.mutate(dataToDelete._id);
     }
   };
 
@@ -592,30 +349,6 @@ const DatabaseAdmin = () => {
       }
     };
     reader.readAsArrayBuffer(file);
-  };
-
-  // Fungsi untuk konversi scientific notation ke string penuh
-  const convertScientificToFull = (scientificNotation) => {
-    try {
-      const [base, exponent] = scientificNotation.split("E");
-      const [integerPart, decimalPart = ""] = base.split(".");
-
-      const exp = parseInt(exponent);
-      const totalLength = integerPart.length + Math.abs(exp);
-
-      let result = integerPart + decimalPart;
-
-      if (exp > 0) {
-        result = result.padEnd(integerPart.length + exp, "0");
-      } else {
-        result = result.padStart(totalLength, "0");
-      }
-
-      return result;
-    } catch (error) {
-      console.error("Error converting scientific notation:", error);
-      return scientificNotation;
-    }
   };
 
   // Fungsi untuk memvalidasi data import
@@ -732,100 +465,23 @@ const DatabaseAdmin = () => {
     return duplicates;
   };
 
-  // Fungsi untuk mengirim data import ke backend - DIPERBAIKI
+  // Fungsi untuk mengirim data import ke backend
   const handleImportSubmit = async () => {
     if (importData.length === 0) return;
     
-    try {
-      setIsImporting(true);
-      const token = localStorage.getItem("token");
+    // Hapus data duplikat sebelum mengirim
+    const uniqueData = [];
+    const nimSet = new Set();
 
-      // Hapus data duplikat sebelum mengirim
-      const uniqueData = [];
-      const nimSet = new Set();
-
-      importData.forEach((item) => {
-        if (!nimSet.has(item.nim)) {
-          nimSet.add(item.nim);
-          uniqueData.push(item);
-        }
-      });
-
-      const dataToSend = uniqueData;
-
-      const response = await fetch(`${API_BASE_URL}/api/db/import`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ data: dataToSend }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal mengimport data");
+    importData.forEach((item) => {
+      if (!nimSet.has(item.nim)) {
+        nimSet.add(item.nim);
+        uniqueData.push(item);
       }
+    });
 
-      const result = await response.json();
-      console.log("Response dari backend:", result);
-
-      // PERBAIKAN: Handle error dari backend dengan lebih baik
-      if (result.details && result.details.errors && result.details.errors.length > 0) {
-        // Jika ada error dari backend, tampilkan sebagai importErrors
-        const backendErrors = result.details.errors.map((err, index) => ({
-          row: index + 1,
-          error: err.error || "Error tidak diketahui",
-          data: err // Simpan data error dari backend
-        }));
-
-        setImportErrors(backendErrors);
-        
-        // Tampilkan pesan error yang informatif
-        if (result.details.success > 0) {
-          setSuccessMessage(
-            `Berhasil mengimport ${result.details.success} data, tetapi ${result.details.errors.length} data gagal. Periksa error di bawah.`
-          );
-        } else {
-          setError(`Import gagal: ${result.message || 'Terjadi kesalahan di server'}`);
-        }
-      } else {
-        // Handle success case
-        let successCount = result.details?.success || result.inserted || result.success || dataToSend.length;
-        let duplicateCount = result.details?.duplicates || result.duplicates || 0;
-
-        if (duplicateCount > 0) {
-          setSuccessMessage(
-            `Berhasil mengimport ${successCount} data! ` +
-            `⚠️ ${duplicateCount} data duplikat tidak diimport.`
-          );
-        } else {
-          setSuccessMessage(`✅ Berhasil mengimport ${successCount} data!`);
-        }
-
-        // Refresh data
-        await fetchData();
-
-        // Reset modal jika tidak ada error
-        if (result.details?.errors?.length === 0) {
-          setShowImportModal(false);
-          setImportData([]);
-          setImportErrors([]);
-        }
-      }
-
-      setTimeout(() => {
-        setSuccessMessage(null);
-        setError(null);
-      }, 5000);
-
-    } catch (err) {
-      console.error("Error dalam import:", err);
-      setError(err.message || "Terjadi kesalahan saat mengimport data");
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setIsImporting(false);
-    }
+    const dataToSend = uniqueData;
+    importMutation.mutate(dataToSend);
   };
 
   // Fungsi untuk download template
@@ -893,12 +549,12 @@ const DatabaseAdmin = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <NavbarAdmin />
 
-      <main className="flex-grow flex-wrap gap-2 max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 w-full md:w-auto">
+      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <h1 className="text-2xl font-bold text-gray-800">
             Database Anggota
           </h1>
-          <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => requestSort("angkatan")}
               className={`px-3 py-2 rounded-md text-sm ${
@@ -929,20 +585,22 @@ const DatabaseAdmin = () => {
             >
               Reset Sort
             </button>
-            <button
-              onClick={() => {
-                setShowAddForm(true);
-                setEditData(null);
-                resetForm();
-              }}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+            <Link
+              to="/admin/create-anggota"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md inline-flex items-center"
             >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
               Tambah Data
-            </button>
+            </Link>
             <button
               onClick={() => setShowImportModal(true)}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md"
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md inline-flex items-center"
             >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
               Import Data
             </button>
           </div>
@@ -988,249 +646,16 @@ const DatabaseAdmin = () => {
         </div>
 
         {/* Loading Indicator */}
-        {loading && (
+        {isLoading && (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
           </div>
         )}
 
-        {/* Add/Edit Form Modal */}
-        {showAddForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <h2 className="text-xl font-semibold mb-4">
-                {editData ? "Edit Data Anggota" : "Tambah Data Anggota Baru"}
-              </h2>
-              {error && (
-                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
-                  {error}
-                </div>
-              )}
-              <form onSubmit={handleSubmit}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nama Lengkap*
-                    </label>
-                    <input
-                      type="text"
-                      name="nama"
-                      value={formData.nama}
-                      onChange={handleInputChange}
-                      className={`w-full p-2 border ${
-                        errors.nama ? "border-red-500" : "border-gray-300"
-                      } rounded-md`}
-                      required
-                    />
-                    {errors.nama && (
-                      <p className="mt-1 text-sm text-red-600">{errors.nama}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      No. Induk
-                    </label>
-                    <input
-                      type="number"
-                      name="noInduk"
-                      value={formData.noInduk}
-                      onChange={handleInputChange}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      placeholder="Opsional"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      NIM*
-                    </label>
-                    <input
-                      type="number"
-                      name="nim"
-                      value={formData.nim}
-                      onChange={handleInputChange}
-                      className={`w-full p-2 border ${
-                        errors.nim ? "border-red-500" : "border-gray-300"
-                      } rounded-md`}
-                      required
-                      maxLength={14}
-                      placeholder="13 atau 14 digit angka"
-                    />
-                    {errors.nim && (
-                      <p className="mt-1 text-sm text-red-600">{errors.nim}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Fakultas*
-                    </label>
-                    <select
-                      name="fakultas"
-                      value={formData.fakultas}
-                      onChange={handleFakultasChange}
-                      className={`w-full p-2 border ${
-                        errors.fakultas ? "border-red-500" : "border-gray-300"
-                      } rounded-md`}
-                      required
-                    >
-                      <option value="">Pilih Fakultas</option>
-                      {Object.keys(fakultasJurusan).map((fakultas) => (
-                        <option key={fakultas} value={fakultas}>
-                          {fakultas}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.fakultas && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {errors.fakultas}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Jurusan*
-                    </label>
-                    <select
-                      name="jurusan"
-                      value={formData.jurusan}
-                      onChange={handleInputChange}
-                      className={`w-full p-2 border ${
-                        errors.jurusan ? "border-red-500" : "border-gray-300"
-                      } rounded-md`}
-                      required
-                      disabled={!formData.fakultas}
-                    >
-                      <option value="">
-                        {formData.fakultas
-                          ? "Pilih Jurusan"
-                          : "Pilih Fakultas terlebih dahulu"}
-                      </option>
-                      {jurusanOptions.map((jurusan) => (
-                        <option key={jurusan} value={jurusan}>
-                          {jurusan}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.jurusan && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {errors.jurusan}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Angkatan*
-                    </label>
-                    <input
-                      type="number"
-                      name="angkatan"
-                      value={formData.angkatan}
-                      onChange={handleInputChange}
-                      className={`w-full p-2 border ${
-                        errors.angkatan ? "border-red-500" : "border-gray-300"
-                      } rounded-md`}
-                      required
-                    />
-                    {errors.angkatan && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {errors.angkatan}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tempat Lahir*
-                    </label>
-                    <input
-                      type="text"
-                      name="tempatLahir"
-                      value={formData.tempatLahir}
-                      onChange={handleInputChange}
-                      className={`w-full p-2 border ${
-                        errors.tempatLahir
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      } rounded-md`}
-                      required
-                      placeholder="Contoh: Jakarta"
-                    />
-                    {errors.tempatLahir && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {errors.tempatLahir}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tanggal Lahir*
-                    </label>
-                    <input
-                      type="date"
-                      name="tanggalLahir"
-                      value={formData.dateValue || ""}
-                      onChange={handleDateChange}
-                      className={`w-full p-2 border ${
-                        errors.tanggalLahir
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      } rounded-md`}
-                      required
-                    />
-                    {formData.displayTanggalLahir && (
-                      <p className="mt-1 text-sm text-gray-500">
-                        Format tampilan: {formData.displayTanggalLahir}
-                      </p>
-                    )}
-                    {errors.tanggalLahir && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {errors.tanggalLahir}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nama Pandega
-                    </label>
-                    <input
-                      type="text"
-                      name="pandega"
-                      value={formData.pandega}
-                      onChange={handleInputChange}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      placeholder="Opsional"
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end space-x-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddForm(false);
-                      resetForm();
-                    }}
-                    className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center min-w-[80px]"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <span className="flex">
-                        <span className="animate-bounce">.</span>
-                        <span className="animate-bounce delay-100">.</span>
-                        <span className="animate-bounce delay-200">.</span>
-                      </span>
-                    ) : editData ? (
-                      "Update"
-                    ) : (
-                      "Simpan"
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
+        {/* Fetch Error */}
+        {isError && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            {fetchError?.message || 'Gagal mengambil data'}
           </div>
         )}
 
@@ -1491,10 +916,10 @@ const DatabaseAdmin = () => {
                 
                 <button
                   onClick={handleImportSubmit}
-                  disabled={importData.length === 0 || isImporting}
+                  disabled={importData.length === 0 || importMutation.isLoading}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center min-w-[100px]"
                 >
-                  {isImporting ? (
+                  {importMutation.isLoading ? (
                     <span className="flex">
                       <span className="animate-bounce">.</span>
                       <span className="animate-bounce delay-100">.</span>
@@ -1537,9 +962,9 @@ const DatabaseAdmin = () => {
                 <button
                   onClick={handleDelete}
                   className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center justify-center min-w-[80px]"
-                  disabled={isDeleting}
+                  disabled={deleteMutation.isLoading}
                 >
-                  {isDeleting ? (
+                  {deleteMutation.isLoading ? (
                     <span className="flex">
                       <span className="animate-bounce">.</span>
                       <span className="animate-bounce delay-100">.</span>
@@ -1561,65 +986,31 @@ const DatabaseAdmin = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 sticky top-0 z-30">
                   <tr>
-                    <th
-                      scope="col"
-                      className="sticky left-0 z-40 w-16 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer bg-gray-50 shadow-right"
-                      onClick={() => requestSort("no")}
-                    >
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       No
                     </th>
-                    <th
-                      scope="col"
-                      className="sticky left-16 z-40 min-w-[200px] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 shadow-right"
-                      onClick={() => requestSort("nama")}
-                    >
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Nama Lengkap
                     </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => requestSort("noInduk")}
-                    >
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       No. Induk
                     </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => requestSort("nim")}
-                    >
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       NIM
                     </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Fakultas/Jurusan
                     </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => requestSort("angkatan")}
-                    >
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Angkatan
                     </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => requestSort("ttl")}
-                    >
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Tempat Tanggal Lahir
                     </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => requestSort("pandega")}
-                    >
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Nama Pandega
                     </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Aksi
                     </th>
                   </tr>
@@ -1628,10 +1019,10 @@ const DatabaseAdmin = () => {
                   {paginatedData && paginatedData.length > 0 ? (
                     paginatedData.map((item, index) => (
                       <tr key={item._id} className="hover:bg-gray-50">
-                        <td className="sticky left-0 z-30 w-16 px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-white shadow-right">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {(currentPage - 1) * pageSize + index + 1}
                         </td>
-                        <td className="sticky left-16 z-30 min-w-[200px] px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 bg-white shadow-right">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {item.nama}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -1653,12 +1044,12 @@ const DatabaseAdmin = () => {
                           {item.pandega}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => handleEdit(item)}
+                          <Link
+                            to={`/admin/edit-anggota/${item._id}`}
                             className="text-blue-600 hover:text-blue-900 mr-3"
                           >
                             Edit
-                          </button>
+                          </Link>
                           <button
                             onClick={() => confirmDelete(item)}
                             className="text-red-600 hover:text-red-900"
@@ -1674,7 +1065,7 @@ const DatabaseAdmin = () => {
                         colSpan="9"
                         className="px-6 py-4 text-center text-sm text-gray-500"
                       >
-                        {loading ? "Memuat data..." : "Tidak ada data yang ditemukan"}
+                        {isLoading ? "Memuat data..." : "Tidak ada data yang ditemukan"}
                       </td>
                     </tr>
                   )}
@@ -1710,12 +1101,12 @@ const DatabaseAdmin = () => {
                     )}
                   </div>
                   <div className="flex flex-col space-y-2">
-                    <button
-                      onClick={() => handleEdit(item)}
+                    <Link
+                      to={`/admin/edit-anggota/${item._id}`}
                       className="text-blue-600 hover:text-blue-900 text-sm"
                     >
                       Edit
-                    </button>
+                    </Link>
                     <button
                       onClick={() => confirmDelete(item)}
                       className="text-red-600 hover:text-red-900 text-sm"
@@ -1728,7 +1119,7 @@ const DatabaseAdmin = () => {
             ))
           ) : (
             <div className="text-center py-8 text-gray-500">
-              {loading ? "Memuat data..." : "Tidak ada data yang ditemukan"}
+              {isLoading ? "Memuat data..." : "Tidak ada data yang ditemukan"}
             </div>
           )}
         </div>
