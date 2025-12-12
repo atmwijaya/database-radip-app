@@ -19,7 +19,7 @@ const NavbarAdmin = () => {
     localStorage.removeItem("admin");
     localStorage.removeItem("tokenExpiration");
     console.log("Admin logged out");
-    navigate("/enter"); // Arahkan ke halaman login setelah logout
+    navigate("/enter"); 
     logout();
     setShowLogoutModal(false);
   };

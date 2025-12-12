@@ -153,6 +153,9 @@ const DatabaseAnggota = () => {
                             Jenjang
                           </th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-blue-900">
+                            Tanggal Dilantik
+                          </th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-blue-900">
                             Pandega
                           </th>
                         </tr>
@@ -195,6 +198,17 @@ const DatabaseAnggota = () => {
                                   : "Bhakti"}
                               </span>
                             </td>
+                            <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                              {member.tanggalDilantik
+                                ? new Date(
+                                    member.tanggalDilantik
+                                  ).toLocaleDateString("id-ID", {
+                                    day: "2-digit",
+                                    month: "short",
+                                    year: "numeric",
+                                  })
+                                : "-"}
+                            </td>
                             <td className="px-4 py-3 text-sm text-gray-600">
                               {member.pandega}
                             </td>
@@ -216,29 +230,51 @@ const DatabaseAnggota = () => {
                             <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
                               {member.nama}
                             </h3>
-                            <span className="text-xs sm:text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                              {member.angkatan}
-                            </span>
-                          </div>
-                          <div className="flex items-center mt-1">
-                            <span className="text-xs text-gray-500 mr-2">
-                              Jenjang:
-                            </span>
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                member.jenjang === "muda"
-                                  ? "bg-green-100 text-green-800"
+                            <div className="flex items-center mt-1 space-x-2">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                  member.jenjang === "muda"
+                                    ? "bg-green-100 text-green-800"
+                                    : member.jenjang === "madya"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-yellow-100 text-yellow-800"
+                                }`}
+                              >
+                                {member.jenjang === "muda"
+                                  ? "Muda"
                                   : member.jenjang === "madya"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-yellow-100 text-yellow-800"
-                              }`}
-                            >
-                              {member.jenjang === "muda"
-                                ? "Muda"
-                                : member.jenjang === "madya"
-                                ? "Madya"
-                                : "Bhakti"}
-                            </span>
+                                  ? "Madya"
+                                  : "Bhakti"}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                Angkatan: {member.angkatan}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded ml-auto">
+                            <div className="flex items-center justify-end">
+                              <svg
+                                className="w-3 h-3 mr-1 flex-shrink-0"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                />
+                              </svg>
+                              <span className="font-medium">Dilantik:</span>
+                              <span className="ml-1">
+                                {member.tanggalDilantik
+                                  ? new Date(
+                                      member.tanggalDilantik
+                                    ).toLocaleDateString("id-ID")
+                                  : "Belum ditentukan"}
+                              </span>
+                            </div>
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm text-gray-600">
