@@ -166,11 +166,7 @@ const DatabaseAdmin = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const navigate = useNavigate();
-
-  // Gunakan Query Client untuk invalidate cache
   const queryClient = useQueryClient();
-
-  // Gunakan React Query untuk fetching data
   const {
     data: members = [],
     isLoading,
@@ -202,13 +198,11 @@ const DatabaseAdmin = () => {
     },
   });
 
-  // Extract unique angkatan dan jenjang dari data
   const { uniqueAngkatan, uniqueJenjang } = useMemo(() => {
     if (!members || members.length === 0) {
       return { uniqueAngkatan: [], uniqueJenjang: [] };
     }
 
-    // Get unique angkatan (sorted descending - terbaru duluan)
     const angkatanSet = new Set();
     members.forEach((member) => {
       if (member.angkatan) {
@@ -216,14 +210,12 @@ const DatabaseAdmin = () => {
       }
     });
     const uniqueAngkatan = Array.from(angkatanSet)
-      .sort((a, b) => parseInt(b) - parseInt(a)) // Sort descending
+      .sort((a, b) => parseInt(b) - parseInt(a)) 
       .map((angkatan) => ({
         value: angkatan,
         label: `Angkatan ${angkatan}`,
         count: members.filter((m) => m.angkatan?.toString() === angkatan).length,
       }));
-
-    // Get unique jenjang
     const jenjangSet = new Set();
     members.forEach((member) => {
       if (member.jenjang) {
@@ -265,11 +257,9 @@ const DatabaseAdmin = () => {
     };
   }, []);
 
-  // Filter data berdasarkan search term dan filter yang dipilih
   const filteredData = useMemo(() => {
     let filtered = [...members];
 
-    // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter((item) => {
         return (
@@ -287,14 +277,12 @@ const DatabaseAdmin = () => {
       });
     }
 
-    // Apply angkatan filter
     if (selectedAngkatan) {
       filtered = filtered.filter(
         (item) => item.angkatan?.toString() === selectedAngkatan
       );
     }
 
-    // Apply jenjang filter
     if (selectedJenjang) {
       filtered = filtered.filter((item) => item.jenjang === selectedJenjang);
     }
@@ -302,24 +290,20 @@ const DatabaseAdmin = () => {
     return filtered;
   }, [members, searchTerm, selectedAngkatan, selectedJenjang]);
 
-  // Reset semua filter
   const resetAllFilters = () => {
     setSelectedAngkatan(null);
     setSelectedJenjang(null);
     setShowSortDropdown(false);
   };
 
-  // Clear angkatan filter
   const clearAngkatanFilter = () => {
     setSelectedAngkatan(null);
   };
 
-  // Clear jenjang filter
   const clearJenjangFilter = () => {
     setSelectedJenjang(null);
   };
 
-  // Get filter display text
   const getFilterDisplayText = () => {
     if (selectedAngkatan && selectedJenjang) {
       return `Angkatan ${selectedAngkatan} & ${selectedJenjang === "muda" ? "Muda" : selectedJenjang === "madya" ? "Madya" : "Bhakti"}`;
@@ -333,32 +317,27 @@ const DatabaseAdmin = () => {
     return "Filter";
   };
 
-  // Pagination
   const totalPages = Math.ceil(filteredData.length / pageSize);
   const paginatedData =
     filteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize) ||
     [];
 
-  // Handle delete confirmation
   const confirmDelete = (item) => {
     setDataToDelete(item);
     setShowDeleteModal(true);
   };
 
-  // Handle delete
   const handleDelete = () => {
     if (dataToDelete) {
       deleteMutation.mutate(dataToDelete._id);
     }
   };
 
-  // Handle import success
   const handleImportSuccess = (message) => {
     setSuccessMessage(message);
     setTimeout(() => setSuccessMessage(null), 5000);
   };
 
-  // Handle import error
   const handleImportError = (errorMessage) => {
     setError(errorMessage);
     setTimeout(() => setError(null), 5000);
