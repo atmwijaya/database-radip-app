@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import NavbarAdmin from "../components/navbarAdmin";
 import Footer from "../../components/footer";
 import { checkTokenExpiration } from "../../../../backend/utils/auth";
-import * as XLSX from "xlsx";
+import ImportAnggotaModal from "./importAnggotaModal";
 
 const monthNames = [
   "Januari",
@@ -153,32 +153,10 @@ const deleteMember = async (id) => {
   return response.json();
 };
 
-// Import function untuk React Query Mutation
-const importMembers = async (data) => {
-  const token = localStorage.getItem("token");
-  const response = await fetch(`${API_BASE_URL}/api/db/import`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ data }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || "Gagal mengimport data");
-  }
-
-  return response.json();
-};
-
 const DatabaseAdmin = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortConfig, setSortConfig] = useState({
-    key: "nama",
-    direction: "asc",
-  });
+  const [selectedAngkatan, setSelectedAngkatan] = useState(null);
+  const [selectedJenjang, setSelectedJenjang] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [dataToDelete, setDataToDelete] = useState(null);
   const [error, setError] = useState(null);
@@ -186,8 +164,7 @@ const DatabaseAdmin = () => {
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [importData, setImportData] = useState([]);
-  const [importErrors, setImportErrors] = useState([]);
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
   const navigate = useNavigate();
 
   // Gunakan Query Client untuk invalidate cache
@@ -200,10 +177,10 @@ const DatabaseAdmin = () => {
     isError,
     error: fetchError,
   } = useQuery({
-    queryKey: ["members", "admin"], // Key unik untuk cache admin
+    queryKey: ["members", "admin"],
     queryFn: fetchMembersAdmin,
-    staleTime: 5 * 60 * 1000, // Data dianggap segar selama 5 menit
-    cacheTime: 10 * 60 * 1000, // Cache disimpan selama 10 menit
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     retry: 1,
@@ -213,7 +190,6 @@ const DatabaseAdmin = () => {
   const deleteMutation = useMutation({
     mutationFn: deleteMember,
     onSuccess: () => {
-      // Invalidate dan refetch query members
       queryClient.invalidateQueries(["members", "admin"]);
       setShowDeleteModal(false);
       setDataToDelete(null);
@@ -226,62 +202,44 @@ const DatabaseAdmin = () => {
     },
   });
 
-  // Mutation untuk import members
-  const importMutation = useMutation({
-    mutationFn: importMembers,
-    onSuccess: (result) => {
-      // Invalidate dan refetch query members
-      queryClient.invalidateQueries(["members", "admin"]);
+  // Extract unique angkatan dan jenjang dari data
+  const { uniqueAngkatan, uniqueJenjang } = useMemo(() => {
+    if (!members || members.length === 0) {
+      return { uniqueAngkatan: [], uniqueJenjang: [] };
+    }
 
-      // Handle error dari backend
-      if (result.details?.errors?.length > 0) {
-        const backendErrors = result.details.errors.map((err, index) => ({
-          row: index + 1,
-          error: err.error || "Error tidak diketahui",
-          data: err,
-        }));
-        setImportErrors(backendErrors);
-
-        if (result.details.success > 0) {
-          setSuccessMessage(
-            `Berhasil mengimport ${result.details.success} data, tetapi ${result.details.errors.length} data gagal.`
-          );
-        }
-      } else {
-        let successCount =
-          result.details?.success ||
-          result.inserted ||
-          result.success ||
-          importData.length;
-        let duplicateCount =
-          result.details?.duplicates || result.duplicates || 0;
-
-        if (duplicateCount > 0) {
-          setSuccessMessage(
-            `Berhasil mengimport ${successCount} data! ⚠️ ${duplicateCount} data duplikat tidak diimport.`
-          );
-        } else {
-          setSuccessMessage(`✅ Berhasil mengimport ${successCount} data!`);
-        }
-
-        // Reset modal jika tidak ada error
-        if (result.details?.errors?.length === 0) {
-          setShowImportModal(false);
-          setImportData([]);
-          setImportErrors([]);
-        }
+    // Get unique angkatan (sorted descending - terbaru duluan)
+    const angkatanSet = new Set();
+    members.forEach((member) => {
+      if (member.angkatan) {
+        angkatanSet.add(member.angkatan.toString());
       }
+    });
+    const uniqueAngkatan = Array.from(angkatanSet)
+      .sort((a, b) => parseInt(b) - parseInt(a)) // Sort descending
+      .map((angkatan) => ({
+        value: angkatan,
+        label: `Angkatan ${angkatan}`,
+        count: members.filter((m) => m.angkatan?.toString() === angkatan).length,
+      }));
 
-      setTimeout(() => {
-        setSuccessMessage(null);
-        setError(null);
-      }, 5000);
-    },
-    onError: (error) => {
-      setError(error.message || "Terjadi kesalahan saat mengimport data");
-      setTimeout(() => setError(null), 5000);
-    },
-  });
+    // Get unique jenjang
+    const jenjangSet = new Set();
+    members.forEach((member) => {
+      if (member.jenjang) {
+        jenjangSet.add(member.jenjang);
+      }
+    });
+    const uniqueJenjang = Array.from(jenjangSet)
+      .sort()
+      .map((jenjang) => ({
+        value: jenjang,
+        label: jenjang === "muda" ? "Muda" : jenjang === "madya" ? "Madya" : "Bhakti",
+        count: members.filter((m) => m.jenjang === jenjang).length,
+      }));
+
+    return { uniqueAngkatan, uniqueJenjang };
+  }, [members]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -296,7 +254,6 @@ const DatabaseAdmin = () => {
       handleLogout();
     }
 
-    // Set up token expiration check every minute
     const interval = setInterval(() => {
       if (!checkTokenExpiration()) {
         handleLogout();
@@ -308,47 +265,73 @@ const DatabaseAdmin = () => {
     };
   }, []);
 
-  // Handle sort
-  const requestSort = (key) => {
-    let direction = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
-  };
+  // Filter data berdasarkan search term dan filter yang dipilih
+  const filteredData = useMemo(() => {
+    let filtered = [...members];
 
-  // Sorted data
-  const sortedData = React.useMemo(() => {
-    let sortableData = [...members];
-    if (sortConfig !== null) {
-      sortableData.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
-          return sortConfig.direction === "asc" ? -1 : 1;
-        }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
-          return sortConfig.direction === "asc" ? 1 : -1;
-        }
-        return 0;
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter((item) => {
+        return (
+          item.nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.noInduk &&
+            item.noInduk.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          item.nim?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.fakultas?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.jurusan?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.angkatan?.toString().includes(searchTerm) ||
+          item.ttl?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.pandega &&
+            item.pandega.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
       });
     }
-    return sortableData;
-  }, [members, sortConfig]);
 
-  // Filter data berdasarkan search term
-  const filteredData = sortedData.filter((item) => {
-    return (
-      item.nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.noInduk &&
-        item.noInduk.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      item.nim?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.fakultas?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.jurusan?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.angkatan?.toString().includes(searchTerm) ||
-      item.ttl?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.pandega &&
-        item.pandega.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  });
+    // Apply angkatan filter
+    if (selectedAngkatan) {
+      filtered = filtered.filter(
+        (item) => item.angkatan?.toString() === selectedAngkatan
+      );
+    }
+
+    // Apply jenjang filter
+    if (selectedJenjang) {
+      filtered = filtered.filter((item) => item.jenjang === selectedJenjang);
+    }
+
+    return filtered;
+  }, [members, searchTerm, selectedAngkatan, selectedJenjang]);
+
+  // Reset semua filter
+  const resetAllFilters = () => {
+    setSelectedAngkatan(null);
+    setSelectedJenjang(null);
+    setShowSortDropdown(false);
+  };
+
+  // Clear angkatan filter
+  const clearAngkatanFilter = () => {
+    setSelectedAngkatan(null);
+  };
+
+  // Clear jenjang filter
+  const clearJenjangFilter = () => {
+    setSelectedJenjang(null);
+  };
+
+  // Get filter display text
+  const getFilterDisplayText = () => {
+    if (selectedAngkatan && selectedJenjang) {
+      return `Angkatan ${selectedAngkatan} & ${selectedJenjang === "muda" ? "Muda" : selectedJenjang === "madya" ? "Madya" : "Bhakti"}`;
+    }
+    if (selectedAngkatan) {
+      return `Angkatan ${selectedAngkatan}`;
+    }
+    if (selectedJenjang) {
+      return selectedJenjang === "muda" ? "Muda" : selectedJenjang === "madya" ? "Madya" : "Bhakti";
+    }
+    return "Filter";
+  };
 
   // Pagination
   const totalPages = Math.ceil(filteredData.length / pageSize);
@@ -369,246 +352,16 @@ const DatabaseAdmin = () => {
     }
   };
 
-  // Fungsi untuk menangani upload file
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, {
-          type: "array",
-          cellDates: true,
-          cellText: false,
-          cellNF: true,
-        });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-          raw: false,
-          defval: "",
-        });
-
-        // Validasi dan format data
-        const { validData, errors } = validateImportData(jsonData);
-        setImportData(validData);
-        setImportErrors(errors);
-      } catch (err) {
-        setError("Gagal membaca file: " + err.message);
-        setTimeout(() => setError(null), 3000);
-      }
-    };
-    reader.readAsArrayBuffer(file);
+  // Handle import success
+  const handleImportSuccess = (message) => {
+    setSuccessMessage(message);
+    setTimeout(() => setSuccessMessage(null), 5000);
   };
 
-  // Fungsi untuk memvalidasi data import
-  const validateImportData = (data) => {
-    const validData = [];
-    const errors = [];
-
-    data.forEach((row, index) => {
-      const rowErrors = [];
-
-      // Validasi NIM
-      let nimValue = row.nim || row.NIM || row.Nim;
-
-      if (!nimValue) {
-        rowErrors.push(`NIM harus diisi`);
-      } else {
-        const nimStr = nimValue.toString().replace(/\D/g, "");
-
-        if (nimStr.length !== 13 && nimStr.length !== 14) {
-          rowErrors.push(
-            `NIM harus 13 atau 14 digit angka. Diterima: ${nimStr} (${nimStr.length} digit)`
-          );
-        } else if (!/^\d+$/.test(nimStr)) {
-          rowErrors.push(`NIM harus berupa angka`);
-        } else {
-          row.nim = nimStr;
-        }
-      }
-
-      // Validasi Nama
-      if (!row.nama || typeof row.nama !== "string") {
-        rowErrors.push(`Nama harus diisi`);
-      }
-
-      if (!row.jenjang || !["muda", "madya", "bhakti"].includes(row.jenjang)) {
-        rowErrors.push("Jenjang harus diisi dengan: muda, madya, atau bhakti");
-      }
-
-      if (!row.tanggalDilantik) {
-        rowErrors.push("Tanggal dilantik harus diisi");
-      } else if (!/^\d{4}-\d{2}-\d{2}$/.test(row.tanggalDilantik)) {
-        rowErrors.push("Format tanggal dilantik harus YYYY-MM-DD");
-      }
-
-      // Validasi Fakultas
-      if (
-        !row.fakultas ||
-        !Object.keys(fakultasJurusan).includes(row.fakultas)
-      ) {
-        rowErrors.push(`Fakultas tidak valid`);
-      }
-
-      // Validasi Jurusan
-      if (row.fakultas && row.jurusan) {
-        const validJurusan = fakultasJurusan[row.fakultas] || [];
-        if (!validJurusan.includes(row.jurusan)) {
-          rowErrors.push(`Jurusan tidak valid untuk fakultas ${row.fakultas}`);
-        }
-      }
-
-      // Validasi Angkatan
-      if (!row.angkatan || !/^\d{4}$/.test(row.angkatan.toString())) {
-        rowErrors.push(`Angkatan harus 4 digit angka`);
-      }
-
-      // Validasi Tempat Lahir
-      if (!row.tempatLahir) {
-        rowErrors.push(`Tempat lahir harus diisi`);
-      }
-
-      // Validasi Tanggal Lahir
-      if (!row.tanggalLahir) {
-        rowErrors.push(`Tanggal lahir harus diisi`);
-      } else if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(row.tanggalLahir)) {
-        rowErrors.push(`Format tanggal lahir harus DD/MM/YYYY`);
-      }
-
-      if (rowErrors.length === 0) {
-        const [day, month, year] = row.tanggalLahir.split("/");
-        const formattedDate = `${day} ${
-          monthNames[parseInt(month) - 1]
-        } ${year}`;
-        const ttl = `${row.tempatLahir}, ${formattedDate}`;
-
-        validData.push({
-          nama: row.nama,
-          noInduk: row.noInduk || "-",
-          nim: row.nim,
-          fakultas: row.fakultas,
-          jurusan: row.jurusan,
-          angkatan: parseInt(row.angkatan),
-          ttl: ttl,
-          pandega: row.pandega || "-",
-          tanggalLahir: row.tanggalLahir,
-        });
-      } else {
-        errors.push({
-          row: index + 2,
-          errors: rowErrors,
-          data: row,
-        });
-      }
-    });
-
-    return { validData, errors };
-  };
-
-  const checkForDuplicates = (data) => {
-    const duplicates = [];
-    const nimSet = new Set();
-
-    data.forEach((item, index) => {
-      if (nimSet.has(item.nim)) {
-        duplicates.push({
-          row: index + 1,
-          nim: item.nim,
-          nama: item.nama,
-        });
-      } else {
-        nimSet.add(item.nim);
-      }
-    });
-
-    return duplicates;
-  };
-
-  // Fungsi untuk mengirim data import ke backend
-  const handleImportSubmit = async () => {
-    if (importData.length === 0) return;
-
-    // Hapus data duplikat sebelum mengirim
-    const uniqueData = [];
-    const nimSet = new Set();
-
-    importData.forEach((item) => {
-      if (!nimSet.has(item.nim)) {
-        nimSet.add(item.nim);
-        uniqueData.push(item);
-      }
-    });
-
-    const dataToSend = uniqueData;
-    importMutation.mutate(dataToSend);
-  };
-
-  // Fungsi untuk download template
-  const downloadTemplate = () => {
-    const templateData = [
-      {
-        nama: "John Doe",
-        noInduk: "-",
-        nim: "'12345678901234",
-        fakultas: "Ekonomika dan Bisnis",
-        jurusan: "Manajemen",
-        angkatan: "2020",
-        jenjang: "muda",
-        tanggalDilantik: "2024-01-15",
-        tempatLahir: "Jakarta",
-        tanggalLahir: "'15/01/2002",
-        pandega: "-",
-      },
-      {
-        nama: "Jane Smith",
-        noInduk: "-",
-        nim: "'12345678901235",
-        fakultas: "Teknik",
-        jurusan: "Teknik Sipil",
-        angkatan: "2021",
-        jenjang: "muda",
-        tanggalDilantik: "2024-01-15",
-        tempatLahir: "Surabaya",
-        tanggalLahir: "'20/05/2001",
-        pandega: "-",
-      },
-    ];
-
-    const worksheet = XLSX.utils.json_to_sheet(templateData);
-    const instructions = [
-      ["INSTRUKSI PENGISIAN:"],
-      ["1. Gunakan format TANGGAL: DD/MM/YYYY (contoh: 17/04/2004)"],
-      ["2. Format NIM: 13 atau 14 digit angka (tanpa huruf atau simbol)"],
-      ["3. Set format kolom sebagai 'Text' sebelum input data"],
-      ["4. Untuk tanggal, gunakan format DD/MM/YYYY, bukan MM/DD/YYYY"],
-      [""],
-      ["DATA CONTOH:"],
-    ];
-
-    XLSX.utils.sheet_add_aoa(worksheet, instructions, { origin: "A10" });
-
-    const range = XLSX.utils.decode_range(worksheet["!ref"]);
-    for (let R = range.s.r; R <= range.e.r; ++R) {
-      if (R === 0) continue;
-
-      const nimCell = XLSX.utils.encode_cell({ r: R, c: 2 });
-      if (worksheet[nimCell]) {
-        worksheet[nimCell].t = "s";
-        worksheet[nimCell].z = "@";
-      }
-
-      const dateCell = XLSX.utils.encode_cell({ r: R, c: 7 });
-      if (worksheet[dateCell]) {
-        worksheet[dateCell].t = "s";
-        worksheet[dateCell].z = "@";
-      }
-    }
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
-    XLSX.writeFile(workbook, "template_import_anggota.xlsx");
+  // Handle import error
+  const handleImportError = (errorMessage) => {
+    setError(errorMessage);
+    setTimeout(() => setError(null), 5000);
   };
 
   return (
@@ -617,76 +370,407 @@ const DatabaseAdmin = () => {
 
       <main className="flex-grow flex flex-col mx-auto px-4 sm:px-6 py-8 w-full">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <h1 className="text-2xl font-bold text-gray-800">Database Anggota</h1>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => requestSort("angkatan")}
-              className={`px-3 py-2 rounded-md text-sm ${
-                sortConfig.key === "angkatan"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 hover:bg-gray-300 text-gray-800"
-              }`}
-            >
-              Sort by Angkatan{" "}
-              {sortConfig.key === "angkatan" &&
-                (sortConfig.direction === "asc" ? "↑" : "↓")}
-            </button>
-            <button
-              onClick={() => requestSort("fakultas")}
-              className={`px-3 py-2 rounded-md text-sm ${
-                sortConfig.key === "fakultas"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 hover:bg-gray-300 text-gray-800"
-              }`}
-            >
-              Sort by Fakultas{" "}
-              {sortConfig.key === "fakultas" &&
-                (sortConfig.direction === "asc" ? "↑" : "↓")}
-            </button>
-            <button
-              onClick={() => setSortConfig({ key: "nama", direction: "asc" })}
-              className="px-3 py-2 rounded-md text-sm bg-gray-200 hover:bg-gray-300 text-gray-800"
-            >
-              Reset Sort
-            </button>
-            <Link
-              to="/admin/create-anggota"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md inline-flex items-center"
-            >
-              <svg
-                className="w-4 h-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Database Anggota</h1>
+            <p className="text-sm text-gray-600 mt-1">
+              Total {filteredData.length} anggota ditemukan
+              {selectedAngkatan && ` • Angkatan ${selectedAngkatan}`}
+              {selectedJenjang && ` • Jenjang ${selectedJenjang === "muda" ? "Muda" : selectedJenjang === "madya" ? "Madya" : "Bhakti"}`}
+            </p>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+            {/* Desktop Sort/Filter - Visible on md and above */}
+            <div className="hidden md:flex items-center space-x-2">
+              {/* Angkatan Filter Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowSortDropdown(showSortDropdown === "angkatan" ? null : "angkatan")}
+                  className={`px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 ${
+                    selectedAngkatan
+                      ? "bg-blue-100 text-blue-700 border border-blue-300"
+                      : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  <span>{selectedAngkatan ? `Angkatan ${selectedAngkatan}` : "Filter Angkatan"}</span>
+                  <svg
+                    className={`w-4 h-4 transition-transform ${showSortDropdown === "angkatan" ? "rotate-180" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+
+                {showSortDropdown === "angkatan" && (
+                  <div className="absolute left-0 mt-2 w-64 bg-white rounded-md shadow-lg z-10 border border-gray-200 max-h-80 overflow-y-auto">
+                    <div className="py-2">
+                      <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                        Pilih Angkatan ({uniqueAngkatan.length})
+                      </div>
+                      {uniqueAngkatan.map((angkatan) => (
+                        <button
+                          key={angkatan.value}
+                          onClick={() => {
+                            setSelectedAngkatan(angkatan.value);
+                            setShowSortDropdown(null);
+                          }}
+                          className={`w-full text-left px-4 py-3 text-sm flex items-center justify-between hover:bg-gray-50 ${
+                            selectedAngkatan === angkatan.value
+                              ? "bg-blue-50 text-blue-700"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          <div className="flex items-center">
+                            <span className="font-medium">{angkatan.label}</span>
+                          </div>
+                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                            {angkatan.count}
+                          </span>
+                        </button>
+                      ))}
+                      {selectedAngkatan && (
+                        <button
+                          onClick={clearAngkatanFilter}
+                          className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 border-t border-gray-100"
+                        >
+                          Hapus Filter Angkatan
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Jenjang Filter Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowSortDropdown(showSortDropdown === "jenjang" ? null : "jenjang")}
+                  className={`px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 ${
+                    selectedJenjang
+                      ? "bg-blue-100 text-blue-700 border border-blue-300"
+                      : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  <span>
+                    {selectedJenjang
+                      ? selectedJenjang === "muda"
+                        ? "Muda"
+                        : selectedJenjang === "madya"
+                        ? "Madya"
+                        : "Bhakti"
+                      : "Filter Jenjang"}
+                  </span>
+                  <svg
+                    className={`w-4 h-4 transition-transform ${showSortDropdown === "jenjang" ? "rotate-180" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+
+                {showSortDropdown === "jenjang" && (
+                  <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                    <div className="py-2">
+                      <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                        Pilih Jenjang ({uniqueJenjang.length})
+                      </div>
+                      {uniqueJenjang.map((jenjang) => (
+                        <button
+                          key={jenjang.value}
+                          onClick={() => {
+                            setSelectedJenjang(jenjang.value);
+                            setShowSortDropdown(null);
+                          }}
+                          className={`w-full text-left px-4 py-3 text-sm flex items-center justify-between hover:bg-gray-50 ${
+                            selectedJenjang === jenjang.value
+                              ? "bg-blue-50 text-blue-700"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          <div className="flex items-center">
+                            <span className="font-medium">{jenjang.label}</span>
+                          </div>
+                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                            {jenjang.count}
+                          </span>
+                        </button>
+                      ))}
+                      {selectedJenjang && (
+                        <button
+                          onClick={clearJenjangFilter}
+                          className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 border-t border-gray-100"
+                        >
+                          Hapus Filter Jenjang
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Reset All Filters Button */}
+              {(selectedAngkatan || selectedJenjang) && (
+                <button
+                  onClick={resetAllFilters}
+                  className="px-4 py-2 rounded-md text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300"
+                >
+                  Reset Filter
+                </button>
+              )}
+
+              {/* Add Data Button */}
+              <Link
+                to="/admin/create-anggota"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md inline-flex items-center"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Tambah Data
-            </Link>
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md inline-flex items-center"
-            >
-              <svg
-                className="w-4 h-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+                <svg
+                  className="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Tambah Data
+              </Link>
+
+              {/* Import Data Button */}
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md inline-flex items-center"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                />
-              </svg>
-              Import Data
-            </button>
+                <svg
+                  className="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
+                </svg>
+                Import Data
+              </button>
+            </div>
+
+            {/* Mobile Controls - Visible on md and below */}
+            <div className="md:hidden w-full flex flex-col space-y-3">
+              <div className="flex space-x-2">
+                {/* Add Data Button */}
+                <Link
+                  to="/admin/create-anggota"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md inline-flex items-center justify-center text-sm"
+                >
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  Tambah
+                </Link>
+
+                {/* Import Data Button */}
+                <button
+                  onClick={() => setShowImportModal(true)}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md inline-flex items-center justify-center text-sm"
+                >
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    />
+                  </svg>
+                  Import
+                </button>
+
+                {/* Filter Dropdown Button for Mobile */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowSortDropdown(showSortDropdown === "mobile" ? null : "mobile")}
+                    className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 inline-flex items-center"
+                  >
+                    <span>Filter: {getFilterDisplayText()}</span>
+                    <svg
+                      className="ml-2 w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </button>
+
+                  {/* Filter Dropdown Menu for Mobile */}
+                  {showSortDropdown === "mobile" && (
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg z-10 border border-gray-200 max-h-96 overflow-y-auto">
+                      <div className="py-2">
+                        {/* Angkatan Section */}
+                        <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                          Filter Angkatan ({uniqueAngkatan.length})
+                        </div>
+                        {uniqueAngkatan.map((angkatan) => (
+                          <button
+                            key={angkatan.value}
+                            onClick={() => {
+                              setSelectedAngkatan(
+                                selectedAngkatan === angkatan.value ? null : angkatan.value
+                              );
+                            }}
+                            className={`w-full text-left px-4 py-3 text-sm flex items-center justify-between ${
+                              selectedAngkatan === angkatan.value
+                                ? "bg-blue-50 text-blue-700"
+                                : "text-gray-700 hover:bg-gray-50"
+                            }`}
+                          >
+                            <div className="flex items-center">
+                              <span className="font-medium">{angkatan.label}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                {angkatan.count}
+                              </span>
+                              {selectedAngkatan === angkatan.value && (
+                                <span className="text-blue-600">✓</span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+
+                        {/* Jenjang Section */}
+                        <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b mt-2">
+                          Filter Jenjang ({uniqueJenjang.length})
+                        </div>
+                        {uniqueJenjang.map((jenjang) => (
+                          <button
+                            key={jenjang.value}
+                            onClick={() => {
+                              setSelectedJenjang(
+                                selectedJenjang === jenjang.value ? null : jenjang.value
+                              );
+                            }}
+                            className={`w-full text-left px-4 py-3 text-sm flex items-center justify-between ${
+                              selectedJenjang === jenjang.value
+                                ? "bg-blue-50 text-blue-700"
+                                : "text-gray-700 hover:bg-gray-50"
+                            }`}
+                          >
+                            <div className="flex items-center">
+                              <span className="font-medium">{jenjang.label}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                {jenjang.count}
+                              </span>
+                              {selectedJenjang === jenjang.value && (
+                                <span className="text-blue-600">✓</span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+
+                        {/* Reset Section */}
+                        {(selectedAngkatan || selectedJenjang) && (
+                          <>
+                            <div className="border-t border-gray-100 mt-2"></div>
+                            <button
+                              onClick={resetAllFilters}
+                              className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50"
+                            >
+                              Reset Semua Filter
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Active Filters Display for Mobile */}
+              {(selectedAngkatan || selectedJenjang) && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedAngkatan && (
+                    <div className="inline-flex items-center bg-blue-100 text-blue-700 text-xs px-3 py-1.5 rounded-full">
+                      <span>Angkatan {selectedAngkatan}</span>
+                      <button
+                        onClick={clearAngkatanFilter}
+                        className="ml-2 text-blue-600 hover:text-blue-800"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                  {selectedJenjang && (
+                    <div className="inline-flex items-center bg-green-100 text-green-700 text-xs px-3 py-1.5 rounded-full">
+                      <span>
+                        {selectedJenjang === "muda"
+                          ? "Muda"
+                          : selectedJenjang === "madya"
+                          ? "Madya"
+                          : "Bhakti"}
+                      </span>
+                      <button
+                        onClick={clearJenjangFilter}
+                        className="ml-2 text-green-600 hover:text-green-800"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                  {(selectedAngkatan || selectedJenjang) && (
+                    <button
+                      onClick={resetAllFilters}
+                      className="text-xs text-gray-600 hover:text-gray-800 underline"
+                    >
+                      Reset All
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -709,7 +793,7 @@ const DatabaseAdmin = () => {
           <div className="relative">
             <input
               type="text"
-              placeholder="Cari anggota..."
+              placeholder="Cari anggota berdasarkan nama, NIM, fakultas, dll..."
               className="w-full p-2 pl-10 border border-gray-300 rounded-md"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -745,295 +829,20 @@ const DatabaseAdmin = () => {
 
         {/* Import Modal */}
         {showImportModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-              <h2 className="text-xl font-semibold mb-4">
-                Import Data dari File
-              </h2>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Upload File (CSV atau Excel)
-                </label>
-                <input
-                  type="file"
-                  accept=".csv,.xlsx,.xls"
-                  onChange={handleFileUpload}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Format file harus sesuai dengan template.
-                  <button
-                    onClick={downloadTemplate}
-                    className="text-blue-600 hover:underline ml-1"
-                  >
-                    Download template
-                  </button>
-                </p>
-              </div>
-
-              {importErrors.length > 0 && (
-                <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-                  <h3 className="font-semibold mb-2">
-                    {importErrors.some((e) => e.errors)
-                      ? "Error pada baris:"
-                      : "Error dari Server:"}
-                  </h3>
-                  {importErrors.slice(0, 5).map((error, index) => {
-                    const isValidationError =
-                      error.errors && Array.isArray(error.errors);
-                    const isBackendError = error.error;
-
-                    return (
-                      <div key={index} className="mb-2">
-                        {isValidationError ? (
-                          <>
-                            <p className="font-medium">
-                              Baris {error.row || "Tidak diketahui"}:
-                            </p>
-                            <ul className="list-disc list-inside ml-4">
-                              {error.errors.map((err, i) => (
-                                <li key={i}>{err}</li>
-                              ))}
-                            </ul>
-                            {error.data && (
-                              <details className="ml-4 mt-1 text-sm">
-                                <summary>Data baris:</summary>
-                                <pre className="bg-gray-100 p-2 mt-1 rounded overflow-auto">
-                                  {JSON.stringify(error.data, null, 2)}
-                                </pre>
-                              </details>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <p className="font-medium">Error Server:</p>
-                            <ul className="list-disc list-inside ml-4">
-                              <li>
-                                <strong>Error:</strong>{" "}
-                                {error.error || "Error tidak diketahui"}
-                              </li>
-                              {error.data && (
-                                <>
-                                  <li>
-                                    <strong>Nama:</strong> {error.data.nama}
-                                  </li>
-                                  <li>
-                                    <strong>NIM:</strong> {error.data.nim}
-                                  </li>
-                                </>
-                              )}
-                            </ul>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {importErrors.length > 5 && (
-                    <p className="mt-2">
-                      ... dan {importErrors.length - 5} error lainnya
-                    </p>
-                  )}
-                  <div className="mt-3 p-3 bg-yellow-100 border border-yellow-400 rounded">
-                    <p className="text-yellow-800 text-sm">
-                      <strong>⚠️ Perhatian:</strong> Silahkan ganti data yang
-                      sudah terdaftar atau hapus dari daftar sebelum mengimport
-                      ulang.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {importData.length > 0 && (
-                <div className="mb-4">
-                  <p className="text-sm text-green-600">
-                    {importData.length} data valid siap diimport
-                  </p>
-
-                  {(() => {
-                    const duplicates = checkForDuplicates(importData);
-                    if (duplicates.length > 0) {
-                      return (
-                        <div className="mb-4 p-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded">
-                          <h3 className="font-semibold mb-2">
-                            ⚠️ Peringatan: Data Duplikat
-                          </h3>
-                          <p className="mb-2">
-                            Ditemukan {duplicates.length} data dengan NIM yang
-                            sama:
-                          </p>
-                          <ul className="list-disc list-inside ml-4">
-                            {duplicates.slice(0, 5).map((dup, index) => (
-                              <li key={index}>
-                                Baris {dup.row}: {dup.nama} (NIM: {dup.nim})
-                              </li>
-                            ))}
-                          </ul>
-                          {duplicates.length > 5 && (
-                            <p className="mt-2">
-                              ... dan {duplicates.length - 5} duplikat lainnya
-                            </p>
-                          )}
-                          <p className="mt-2 font-semibold">
-                            Data duplikat tidak akan diimport.
-                          </p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-
-                  <div className="mt-2 max-h-40 overflow-y-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                            Nama
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                            NIM
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                            Fakultas
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                            Jurusan
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                            Angkatan
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                            TTL
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                            Pandega
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                            Status
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {importData.slice(0, 10).map((item, index) => {
-                          const isDuplicate = checkForDuplicates(
-                            importData
-                          ).some(
-                            (dup) =>
-                              dup.nim === item.nim && dup.row !== index + 1
-                          );
-
-                          return (
-                            <tr
-                              key={index}
-                              className={
-                                isDuplicate
-                                  ? "bg-yellow-50"
-                                  : index % 2 === 0
-                                  ? "bg-white"
-                                  : "bg-gray-50"
-                              }
-                            >
-                              <td className="px-3 py-2 text-sm">{item.nama}</td>
-                              <td className="px-3 py-2 text-sm">{item.nim}</td>
-                              <td className="px-3 py-2 text-sm">
-                                {item.fakultas}
-                              </td>
-                              <td className="px-3 py-2 text-sm">
-                                {item.jurusan}
-                              </td>
-                              <td className="px-3 py-2 text-sm">
-                                {item.angkatan}
-                              </td>
-                              <td className="px-3 py-2 text-sm">{item.ttl}</td>
-                              <td className="px-3 py-2 text-sm">
-                                {item.pandega}
-                              </td>
-                              <td className="px-3 py-2 text-sm">
-                                {isDuplicate ? (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                    ⚠️ Duplikat
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    ✓ Valid
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                    {importData.length > 10 && (
-                      <p className="mt-2 text-sm text-gray-500">
-                        ... dan {importData.length - 10} data lainnya
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={() => {
-                    setShowImportModal(false);
-                    setImportData([]);
-                    setImportErrors([]);
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Batal
-                </button>
-
-                {checkForDuplicates(importData).length > 0 && (
-                  <button
-                    onClick={() => {
-                      const uniqueData = [];
-                      const nimSet = new Set();
-
-                      importData.forEach((item) => {
-                        if (!nimSet.has(item.nim)) {
-                          nimSet.add(item.nim);
-                          uniqueData.push(item);
-                        }
-                      });
-
-                      setImportData(uniqueData);
-                      setSuccessMessage(
-                        `Data duplikat telah dihapus. Tinggal ${uniqueData.length} data unik.`
-                      );
-                      setTimeout(() => setSuccessMessage(null), 3000);
-                    }}
-                    className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
-                  >
-                    Hapus Duplikat
-                  </button>
-                )}
-
-                <button
-                  onClick={handleImportSubmit}
-                  disabled={importData.length === 0 || importMutation.isLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center min-w-[100px]"
-                >
-                  {importMutation.isLoading ? (
-                    <span className="flex">
-                      <span className="animate-bounce">.</span>
-                      <span className="animate-bounce delay-100">.</span>
-                      <span className="animate-bounce delay-200">.</span>
-                    </span>
-                  ) : (
-                    `Import (${importData.length})`
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
+          <ImportAnggotaModal
+            onClose={() => setShowImportModal(false)}
+            onSuccess={handleImportSuccess}
+            onError={handleImportError}
+            queryClient={queryClient}
+            monthNames={monthNames}
+            fakultasJurusan={fakultasJurusan}
+          />
         )}
 
         {/* Delete Confirmation Modal */}
         {showDeleteModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="animate-bounce-in bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
               <h3 className="text-lg font-semibold mb-4">
                 Konfirmasi Hapus Data
               </h3>
@@ -1051,21 +860,39 @@ const DatabaseAdmin = () => {
                     setShowDeleteModal(false);
                     setError(null);
                   }}
-                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center justify-center min-w-[80px]"
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center justify-center min-w-[80px]"
                   disabled={deleteMutation.isLoading}
                 >
                   {deleteMutation.isLoading ? (
-                    <span className="flex">
-                      <span className="animate-bounce">.</span>
-                      <span className="animate-bounce delay-100">.</span>
-                      <span className="animate-bounce delay-200">.</span>
-                    </span>
+                    <>
+                      <svg
+                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Menghapus...
+                    </>
                   ) : (
                     "Hapus"
                   )}
@@ -1190,7 +1017,7 @@ const DatabaseAdmin = () => {
                       >
                         {isLoading
                           ? "Memuat data..."
-                          : "Tidak ada data yang ditemukan"}
+                          : "Tidak ada data yang ditemukan dengan filter yang dipilih"}
                       </td>
                     </tr>
                   )}
@@ -1270,51 +1097,53 @@ const DatabaseAdmin = () => {
             ))
           ) : (
             <div className="text-center py-8 text-gray-500">
-              {isLoading ? "Memuat data..." : "Tidak ada data yang ditemukan"}
+              {isLoading ? "Memuat data..." : "Tidak ada data yang ditemukan dengan filter yang dipilih"}
             </div>
           )}
         </div>
 
         {/* Pagination Controls */}
-        <div className="mt-4 flex flex-col md:flex-row justify-between items-center">
-          <div className="flex items-center space-x-2 mb-4 md:mb-0">
-            <span className="text-sm text-gray-700">Tampilkan</span>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="border border-gray-300 rounded-md p-1 text-sm"
-            >
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-            <span className="text-sm text-gray-700">data per halaman</span>
+        {filteredData.length > 0 && (
+          <div className="mt-4 flex flex-col md:flex-row justify-between items-center">
+            <div className="flex items-center space-x-2 mb-4 md:mb-0">
+              <span className="text-sm text-gray-700">Tampilkan</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border border-gray-300 rounded-md p-1 text-sm"
+              >
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span className="text-sm text-gray-700">data per halaman</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50"
+              >
+                Sebelumnya
+              </button>
+              <span className="text-sm text-gray-700">
+                Halaman {currentPage} dari {totalPages}
+              </span>
+              <button
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50"
+              >
+                Selanjutnya
+              </button>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50"
-            >
-              Sebelumnya
-            </button>
-            <span className="text-sm text-gray-700">
-              Halaman {currentPage} dari {totalPages}
-            </span>
-            <button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50"
-            >
-              Selanjutnya
-            </button>
-          </div>
-        </div>
+        )}
       </main>
 
       <Footer />

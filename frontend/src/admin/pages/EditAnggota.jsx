@@ -113,7 +113,7 @@ const EditAnggota = () => {
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const [formData, setFormData] = useState({
-    name: "", 
+    name: "",
     noInduk: "",
     nim: "",
     fakultas: "",
@@ -429,7 +429,6 @@ const EditAnggota = () => {
         return;
       }
 
-      // Format tanggal untuk backend (DD/MM/YYYY)
       let tanggalLahirForDB = "";
       if (formData.dateValue) {
         const date = new Date(formData.dateValue);
@@ -438,18 +437,15 @@ const EditAnggota = () => {
         const year = date.getFullYear();
         tanggalLahirForDB = `${day}/${month}/${year}`;
       } else if (formData.tanggalLahir) {
-        // If already in DD/MM/YYYY format, use directly
         tanggalLahirForDB = formData.tanggalLahir;
       }
 
-      // Create TTL string for MongoDB
       const til = `${formData.tempatLahir}, ${
         formData.displayTanggalLahir || formData.tanggalLahir
       }`;
 
-      // Prepare data for MongoDB backend
       const memberData = {
-        name: formData.name, // MongoDB expects 'name' not 'nama'
+        name: formData.name,
         noInduk: formData.noInduk || "-",
         nim: formData.nim,
         fakultas: formData.fakultas,
@@ -457,13 +453,35 @@ const EditAnggota = () => {
         angkatan: formData.angkatan,
         jenjang: formData.jenjang,
         tanggalDilantik: formData.tanggalDilantik,
-        til: til, // Use 'til' as in MongoDB data
+        til: til,
         pandega: formData.pandega || "-",
         tanggalLahir: tanggalLahirForDB,
       };
+      await queryClient.cancelQueries(["members", "admin"]);
+      await queryClient.cancelQueries(["members", "public"]);
+      const previousAdminData = queryClient.getQueryData(["members", "admin"]);
+      const previousPublicData = queryClient.getQueryData([
+        "members",
+        "public",
+      ]);
 
-      console.log("Sending update data to backend:", memberData);
-      console.log("Update URL:", `${API_BASE_URL}/api/db/${id}`);
+      if (previousAdminData) {
+        queryClient.setQueryData(["members", "admin"], (old) => {
+          if (!old) return old;
+          return old.map((member) =>
+            member._id === id ? { ...member, ...memberData } : member
+          );
+        });
+      }
+
+      if (previousPublicData) {
+        queryClient.setQueryData(["members", "public"], (old) => {
+          if (!old) return old;
+          return old.map((member) =>
+            member._id === id ? { ...member, ...memberData } : member
+          );
+        });
+      }
 
       const response = await fetch(`${API_BASE_URL}/api/db/${id}`, {
         method: "PUT",
@@ -487,13 +505,19 @@ const EditAnggota = () => {
           console.error("Update error text:", errorText);
           errorMessage = errorText || errorMessage;
         }
+        if (previousAdminData) {
+          queryClient.setQueryData(["members", "admin"], previousAdminData);
+        }
+        if (previousPublicData) {
+          queryClient.setQueryData(["members", "public"], previousPublicData);
+        }
         throw new Error(errorMessage);
       }
 
       const result = await response.json();
       console.log("Update successful:", result);
-      queryClient.invalidateQueries(['members', 'admin']);
-      queryClient.invalidateQueries(['members', 'public']);
+      queryClient.invalidateQueries(["members", "admin"]);
+      queryClient.invalidateQueries(["members", "public"]);
 
       setSuccessMessage("✅ Data berhasil diperbaharui!");
       setTimeout(() => {

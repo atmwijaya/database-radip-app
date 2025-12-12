@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import NavbarAdmin from "../components/navbarAdmin";
+import { useQueryClient } from "@tanstack/react-query"; // Tambahkan ini
 
 const monthNames = [
   "Januari",
@@ -87,7 +88,7 @@ const fakultasJurusan = {
     "Ilmu Kelautan",
     "Manajemen Sumber Daya Perairan",
     "Oseanografi",
-    "Perikanan Tangkap",
+    "Perikanan Tangcap",
     "Teknologi Hasil Perikanan",
   ],
   Psikologi: ["Psikologi"],
@@ -107,6 +108,7 @@ const fakultasJurusan = {
 
 const CreateAnggota = ({ onClose, onSuccess }) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient(); // Tambahkan ini
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const [formData, setFormData] = useState({
@@ -140,6 +142,7 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
   const [jurusanOptions, setJurusanOptions] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null); // Tambahkan state untuk success message
 
   // Handle input change
   const handleInputChange = (e) => {
@@ -316,22 +319,42 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
         throw new Error(errorData.message || "Terjadi kesalahan");
       }
 
+      // Invalidate cache untuk memaksa refetch data terbaru
+      await Promise.all([
+        queryClient.invalidateQueries(['members', 'admin']),
+        queryClient.invalidateQueries(['members', 'public']),
+      ]);
+      
+      // Refresh queries untuk memastikan data terbaru
+      await queryClient.refetchQueries({
+        predicate: (query) => 
+          query.queryKey[0] === 'members'
+      });
+
       // Reset form
       resetForm();
 
-      // Notify parent component
+      // Tampilkan success message
+      setSuccessMessage("✅ Data berhasil ditambahkan!");
+      
+      // Notify parent component jika ada
       if (onSuccess) {
         onSuccess("Data berhasil ditambahkan!");
       }
 
-      // Redirect to database page
-      navigate("/admin/database-anggota");
+      // Tunggu sebentar agar user bisa melihat pesan sukses
+      setTimeout(() => {
+        setSuccessMessage(null);
+        // Redirect ke halaman database dengan data terbaru
+        navigate("/admin/database-anggota");
+      }, 1500);
+
     } catch (err) {
       if (err.message.includes("NIM sudah terdaftar")) {
         setErrors((prev) => ({ ...prev, nim: "NIM sudah terdaftar" }));
       } else {
         setErrorMessage(err.message);
-        setTimeout(() => setErrorMessage(null), 3000);
+        setTimeout(() => setErrorMessage(null), 5000);
       }
     } finally {
       setIsSubmitting(false);
@@ -399,6 +422,13 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
               Isi data anggota dengan lengkap dan benar
             </p>
           </div>
+
+          {/* Success Message */}
+          {successMessage && (
+            <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+              {successMessage}
+            </div>
+          )}
 
           {/* Error Message */}
           {errorMessage && (
@@ -753,7 +783,7 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
                 Batal
               </button>
               <button
-                type="button"
+                type="submit"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium"
