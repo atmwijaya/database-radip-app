@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import NavbarAdmin from "../components/navbarAdmin";
-import { useQueryClient } from "@tanstack/react-query"; // Tambahkan ini
+import { useQueryClient } from "@tanstack/react-query"; 
 
 const monthNames = [
   "Januari",
@@ -88,7 +88,7 @@ const fakultasJurusan = {
     "Ilmu Kelautan",
     "Manajemen Sumber Daya Perairan",
     "Oseanografi",
-    "Perikanan Tangcap",
+    "Perikanan Tangkap",
     "Teknologi Hasil Perikanan",
   ],
   Psikologi: ["Psikologi"],
@@ -108,7 +108,7 @@ const fakultasJurusan = {
 
 const CreateAnggota = ({ onClose, onSuccess }) => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient(); // Tambahkan ini
+  const queryClient = useQueryClient(); 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const [formData, setFormData] = useState({
@@ -142,7 +142,7 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
   const [jurusanOptions, setJurusanOptions] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
-  const [successMessage, setSuccessMessage] = useState(null); // Tambahkan state untuk success message
+  const [successMessage, setSuccessMessage] = useState(null); 
 
   // Handle input change
   const handleInputChange = (e) => {
@@ -319,33 +319,26 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
         throw new Error(errorData.message || "Terjadi kesalahan");
       }
 
-      // Invalidate cache untuk memaksa refetch data terbaru
       await Promise.all([
         queryClient.invalidateQueries(['members', 'admin']),
         queryClient.invalidateQueries(['members', 'public']),
       ]);
-      
-      // Refresh queries untuk memastikan data terbaru
+
       await queryClient.refetchQueries({
         predicate: (query) => 
           query.queryKey[0] === 'members'
       });
 
-      // Reset form
       resetForm();
 
-      // Tampilkan success message
       setSuccessMessage("✅ Data berhasil ditambahkan!");
       
-      // Notify parent component jika ada
       if (onSuccess) {
         onSuccess("Data berhasil ditambahkan!");
       }
 
-      // Tunggu sebentar agar user bisa melihat pesan sukses
       setTimeout(() => {
         setSuccessMessage(null);
-        // Redirect ke halaman database dengan data terbaru
         navigate("/admin/database-anggota");
       }, 1500);
 
@@ -361,7 +354,6 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
     }
   };
 
-  // Reset form
   const resetForm = () => {
     setFormData({
       nama: "",
