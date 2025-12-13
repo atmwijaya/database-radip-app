@@ -120,7 +120,7 @@ const StatistikSection = () => {
 
     const detailedAngkatanData = Array.from(angkatanDetailsMap.values())
       .sort((a, b) => b.year - a.year)
-      .slice(0, 8); 
+      .slice(0, 8);
 
     const totalJenjang = {
       muda: members.filter((m) => (m.jenjang || "muda") === "muda").length,
@@ -129,26 +129,26 @@ const StatistikSection = () => {
     };
 
     const jenjangPieData = [
-      { 
-        name: "Muda", 
-        value: totalJenjang.muda, 
+      {
+        name: "Muda",
+        value: totalJenjang.muda,
         color: "#10B981",
         hoverColor: "#0EA271",
-        shadowColor: "rgba(16, 185, 129, 0.3)"
+        shadowColor: "rgba(16, 185, 129, 0.3)",
       },
-      { 
-        name: "Madya", 
-        value: totalJenjang.madya, 
+      {
+        name: "Madya",
+        value: totalJenjang.madya,
         color: "#EF4444",
         hoverColor: "#DC2626",
-        shadowColor: "rgba(239, 68, 68, 0.3)"
+        shadowColor: "rgba(239, 68, 68, 0.3)",
       },
-      { 
-        name: "Bhakti", 
-        value: totalJenjang.bhakti, 
+      {
+        name: "Bhakti",
+        value: totalJenjang.bhakti,
         color: "#F59E0B",
         hoverColor: "#D97706",
-        shadowColor: "rgba(245, 158, 11, 0.3)"
+        shadowColor: "rgba(245, 158, 11, 0.3)",
       },
     ];
 
@@ -235,13 +235,13 @@ const StatistikSection = () => {
       return {
         innerRadius: "30%",
         outerRadius: "75%",
-        paddingAngle: 4,
+        paddingAngle: 6,
       };
     }
     return {
       innerRadius: "25%",
       outerRadius: "70%",
-      paddingAngle: 2,
+      paddingAngle: 4,
     };
   };
 
@@ -262,10 +262,10 @@ const StatistikSection = () => {
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
     const total = statistics.totalAnggota;
     const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-    
+
     const isActive = activeIndex === index;
     const data = statistics.jenjangPieData[index];
-    
+
     return (
       <g>
         <text
@@ -276,10 +276,10 @@ const StatistikSection = () => {
           dominantBaseline="central"
           className="text-sm font-bold"
           style={{
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
             opacity: isActive ? 1 : 0.9,
-            transform: isActive ? 'scale(1.05)' : 'scale(1)',
-            transformOrigin: 'center',
+            transform: isActive ? "scale(1.05)" : "scale(1)",
+            transformOrigin: "center",
           }}
         >
           {`${name}: ${value}`}
@@ -292,7 +292,7 @@ const StatistikSection = () => {
           dominantBaseline="central"
           className="text-[12px] font-medium"
           style={{
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
             opacity: isActive ? 0.9 : 0.7,
           }}
         >
@@ -310,12 +310,13 @@ const StatistikSection = () => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       const total = statistics.totalAnggota;
-      const percentage = total > 0 ? ((data.value / total) * 100).toFixed(1) : 0;
-      
+      const percentage =
+        total > 0 ? ((data.value / total) * 100).toFixed(1) : 0;
+
       return (
         <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg min-w-[150px]">
           <p className="font-bold text-gray-800 text-sm mb-3">{`${data.name}`}</p>
-          
+
           <div className="space-y-2 mb-3">
             <div className="flex justify-between items-center">
               <span className="text-gray-700 text-sm">Jumlah</span>
@@ -594,10 +595,7 @@ const StatistikSection = () => {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div 
-                  className="w-full h-full"
-                  onMouseLeave={onPieLeave}
-                >
+                <div className="w-full h-full" onMouseLeave={onPieLeave}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -618,25 +616,26 @@ const StatistikSection = () => {
                           <Cell
                             key={`cell-${index}`}
                             fill={getCellColor(entry, index)}
-                            stroke="white"
-                            strokeWidth={activeIndex === index ? 3 : 2}
                             style={{
-                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                              transform: activeIndex === index ? 
-                                'translate(0, -4px) scale(1.03)' : 
-                                'translate(0, 0) scale(1)',
-                              transformOrigin: 'center',
-                              cursor: 'pointer',
-                              filter: activeIndex === index ? 
-                                `brightness(1.1) drop-shadow(0 0 8px ${entry.shadowColor})` : 
-                                'brightness(1)',
+                              transition:
+                                "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                              transform:
+                                activeIndex === index
+                                  ? "translate(0, -4px) scale(1.03)"
+                                  : "translate(0, 0) scale(1)",
+                              transformOrigin: "center",
+                              cursor: "pointer",
+                              filter:
+                                activeIndex === index
+                                  ? `brightness(1.1) drop-shadow(0 0 8px ${entry.shadowColor})`
+                                  : "brightness(1)",
                             }}
                           />
                         ))}
                       </Pie>
-                      <Tooltip 
+                      <Tooltip
                         content={<PieChartTooltip />}
-                        wrapperStyle={{ outline: 'none' }}
+                        wrapperStyle={{ outline: "none" }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
