@@ -113,7 +113,7 @@ const EditAnggota = () => {
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const [formData, setFormData] = useState({
-    name: "",
+    nama: "",
     noInduk: "",
     nim: "",
     fakultas: "",
@@ -183,15 +183,12 @@ const EditAnggota = () => {
         const item = await response.json();
         console.log("Data received from API:", item);
 
-        // Debug: Show all fields from MongoDB
         console.log("All fields from MongoDB:", Object.keys(item));
         console.log("MongoDB data:", item);
 
-        // Extract TTL from MongoDB field (either 'til' or 'ttl')
         const ttlString = item.til || item.ttl || "";
         console.log("TTL string from MongoDB:", ttlString);
 
-        // Parse TTL
         let tempatLahir = "";
         let tanggalLahir = "";
         let dateValue = "";
@@ -223,7 +220,6 @@ const EditAnggota = () => {
                 console.log("Parsed date (format 1):", dateValue);
               }
             }
-            // Format 2: "DD/MM/YYYY"
             else if (tanggalLahir.includes("/")) {
               const [day, month, year] = tanggalLahir.split("/");
               dateValue = `${year}-${month.padStart(2, "0")}-${day.padStart(
@@ -236,7 +232,7 @@ const EditAnggota = () => {
         }
 
         const newFormData = {
-          name: item.name || item.nama || "", // Prioritize 'name' from MongoDB
+          nama: item.nama || "", 
           noInduk: item.noInduk === "-" ? "" : item.noInduk || "",
           nim: item.nim || "",
           fakultas: item.fakultas || "",
@@ -257,7 +253,6 @@ const EditAnggota = () => {
 
         setFormData(newFormData);
 
-        // Set jurusan options based on fakultas
         if (item.fakultas && fakultasJurusan[item.fakultas]) {
           setJurusanOptions(fakultasJurusan[item.fakultas]);
         } else {
@@ -280,14 +275,12 @@ const EditAnggota = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
-    // Validation for NIM
     if (name === "nim") {
       if (value.length > 14) return;
       if (value && !/^\d+$/.test(value)) return;
     }
 
-    // Validation for name (allow letters and spaces only)
-    if (name === "name") {
+    if (name === "nama") {
       if (!/^[a-zA-Z\s]*$/.test(value)) return;
     }
 
@@ -349,7 +342,7 @@ const EditAnggota = () => {
   const validateForm = () => {
     let valid = true;
     const newErrors = {
-      name: "",
+      nama: "",
       nim: "",
       fakultas: "",
       jurusan: "",
@@ -360,8 +353,8 @@ const EditAnggota = () => {
       tanggalLahir: "",
     };
 
-    if (!formData.name.trim()) {
-      newErrors.name = "Nama lengkap wajib diisi";
+    if (!formData.nama.trim()) {
+      newErrors.nama = "Nama lengkap wajib diisi";
       valid = false;
     }
 
@@ -445,7 +438,7 @@ const EditAnggota = () => {
       }`;
 
       const memberData = {
-        name: formData.name,
+        nama: formData.nama,
         noInduk: formData.noInduk || "-",
         nim: formData.nim,
         fakultas: formData.fakultas,
@@ -639,16 +632,16 @@ const EditAnggota = () => {
                     </label>
                     <input
                       type="text"
-                      name="name" // Changed from 'nama' to 'name'
-                      value={formData.name}
+                      name="nama" 
+                      value={formData.nama}
                       onChange={handleInputChange}
                       className={`w-full p-3 border rounded-lg ${
-                        errors.name ? "border-red-500" : "border-gray-300"
+                        errors.nama ? "border-red-500" : "border-gray-300"
                       }`}
                       required
                     />
-                    {errors.name && (
-                      <p className="mt-2 text-sm text-red-600">{errors.name}</p>
+                    {errors.nama && (
+                      <p className="mt-2 text-sm text-red-600">{errors.nama}</p>
                     )}
                   </div>
 
