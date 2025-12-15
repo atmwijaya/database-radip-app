@@ -19,7 +19,6 @@ const LoginPage = () => {
     message: "",
   });
 
-  // Tambahkan base URL API (sesuaikan dengan environment Anda)
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const handleInputChange = (e) => {
@@ -76,8 +75,6 @@ const LoginPage = () => {
       password: formData.password,
       rememberMe: formData.rememberMe
     });
-
-      // Step 1: Login
       const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: {
@@ -90,23 +87,17 @@ const LoginPage = () => {
       });
 
       const data = await res.json();
-      console.log("Login response:", data);
 
       if (!res.ok) {
         throw new Error(data.message || "Gagal masuk");
       }
 
-      // Set expiration time (1 hour or 7 days if remember me)
-      // Set expired time 1 jam dari sekarang
     const expirationTime = new Date().getTime() + 3600000;
 
-
-      // Store token and user data
       localStorage.setItem("token", data.token);
       localStorage.setItem("admin", JSON.stringify(data.user));
       localStorage.setItem("tokenExpiration", expirationTime.toString());
 
-      // Redirect to admin page
       navigate("/admin");
     } catch (error) {
       setErrorNotification({
