@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
-import { Search } from "lucide-react";
+import SearchSection from "../components/databaseanggota/searchSection";
+import FilterSection from "../components/databaseanggota/filterSection";
+import ResultsSection from "../components/databaseanggota/resultSection";
+import EmptyStateSection from "../components/databaseanggota/emptyStateSection";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -25,317 +28,298 @@ const fetchMembers = async () => {
 };
 
 const DatabaseAnggota = () => {
+  // State utama
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredMembers, setFilteredMembers] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  
+  // State untuk filter
+  const [selectedAngkatan, setSelectedAngkatan] = useState([]);
+  const [selectedFakultas, setSelectedFakultas] = useState([]);
+  const [selectedJenjang, setSelectedJenjang] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // State untuk kontrol search behavior
+  const [shouldSearch, setShouldSearch] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
 
-  // Gunakan React Query untuk fetching data
-  const {
-    data: members = [],
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
-    queryKey: ["members", "public"], // Key unik untuk cache
+  // Fetch data dengan React Query
+  const { data: members = [], isLoading, isError, error } = useQuery({
+    queryKey: ["members", "public"],
     queryFn: fetchMembers,
-    staleTime: 5 * 60 * 1000, // Data dianggap segar selama 5 menit
-    cacheTime: 10 * 60 * 1000, // Cache disimpan selama 10 menit
-    refetchOnWindowFocus: false, // Tidak refetch saat window focus
-    refetchOnMount: false, // Tidak refetch saat komponen mount ulang
-    retry: 1, // Coba ulang 1 kali jika gagal
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 1,
   });
 
-  // Handle search button click
-  const handleSearch = () => {
-    if (!searchQuery.trim()) {
+  // Ekstrak data unik untuk filter
+  const { angkatanList, fakultasList } = useMemo(() => {
+    if (!members || members.length === 0) {
+      return { angkatanList: [], fakultasList: [] };
+    }
+
+    const angkatanSet = new Set();
+    const fakultasSet = new Set();
+    
+    members.forEach(member => {
+      if (member.angkatan) angkatanSet.add(member.angkatan);
+      if (member.fakultas) fakultasSet.add(member.fakultas);
+    });
+
+    return {
+      angkatanList: Array.from(angkatanSet).sort((a, b) => b - a),
+      fakultasList: Array.from(fakultasSet).sort()
+    };
+  }, [members]);
+
+  // Jenjang options
+  const jenjangOptions = useMemo(() => {
+    const jenjangSet = new Set();
+    members.forEach(member => {
+      if (member.jenjang) jenjangSet.add(member.jenjang);
+    });
+    
+    const options = [];
+    if (jenjangSet.has("muda")) options.push({ value: "muda", label: "Muda", color: "bg-green-100 text-green-800" });
+    if (jenjangSet.has("madya")) options.push({ value: "madya", label: "Madya", color: "bg-red-100 text-red-800" });
+    if (jenjangSet.has("bhakti")) options.push({ value: "bhakti", label: "Bhakti", color: "bg-yellow-100 text-yellow-800" });
+    
+    return options;
+  }, [members]);
+
+  // Fungsi untuk cek apakah search kosong
+  const isSearchEmpty = useMemo(() => {
+    return !searchQuery.trim() && 
+           selectedAngkatan.length === 0 && 
+           selectedFakultas.length === 0 && 
+           selectedJenjang.length === 0;
+  }, [searchQuery, selectedAngkatan, selectedFakultas, selectedJenjang]);
+
+  // Fungsi search utama
+  const performSearch = useCallback(() => {
+    if (isSearchEmpty) {
+      // Reset ke state awal jika search kosong
       setFilteredMembers([]);
       setHasSearched(false);
+      setIsSearching(false);
       return;
     }
 
     setHasSearched(true);
-    const filtered = members.filter(
-      (member) =>
-        member.nama?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (member.noInduk &&
-          member.noInduk.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        member.nim?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        member.fakultas?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        member.jurusan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        member.angkatan?.toString().includes(searchQuery) ||
-        member.ttl?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (member.pandega &&
-          member.pandega.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-    setFilteredMembers(filtered);
-  };
+    setIsSearching(true);
 
-  // Handle enter key press
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      handleSearch();
+    setTimeout(() => {
+      const filtered = members.filter((member) => {
+        const matchesSearch = !searchQuery.trim() || 
+          member.nama?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (member.noInduk && member.noInduk.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          member.nim?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          member.fakultas?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          member.jurusan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          member.angkatan?.toString().includes(searchQuery) ||
+          member.ttl?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (member.pandega && member.pandega.toLowerCase().includes(searchQuery.toLowerCase()));
+
+        const matchesAngkatan = selectedAngkatan.length === 0 || 
+          selectedAngkatan.includes(member.angkatan?.toString());
+
+        const matchesFakultas = selectedFakultas.length === 0 || 
+          selectedFakultas.includes(member.fakultas);
+
+        const matchesJenjang = selectedJenjang.length === 0 || 
+          selectedJenjang.includes(member.jenjang);
+
+        return matchesSearch && matchesAngkatan && matchesFakultas && matchesJenjang;
+      });
+
+      filtered.sort((a, b) => {
+        const nameA = a.nama?.toLowerCase() || '';
+        const nameB = b.nama?.toLowerCase() || '';
+        return nameA.localeCompare(nameB);
+      });
+
+      setFilteredMembers(filtered);
+      setIsSearching(false);
+    }, 300);
+  }, [searchQuery, selectedAngkatan, selectedFakultas, selectedJenjang, members, isSearchEmpty]);
+
+  // Handlers
+  const handleSearchChange = useCallback((value) => {
+    setSearchQuery(value);
+    setIsTyping(true);
+    
+    // Jika input dikosongkan, reset ke state awal
+    if (!value.trim() && isSearchEmpty) {
+      setShouldSearch(true); // Trigger untuk reset
     }
-  };
+  }, [isSearchEmpty]);
+
+  const handleSearchSubmit = useCallback(() => {
+    setIsTyping(false);
+    setShouldSearch(true);
+  }, []);
+
+  const handleSuggestionSelect = useCallback((suggestion) => {
+    setSearchQuery(suggestion.nama);
+    setIsTyping(false);
+    setShouldSearch(true);
+  }, []);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery("");
+    setShouldSearch(true);
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setSelectedAngkatan([]);
+    setSelectedFakultas([]);
+    setSelectedJenjang([]);
+    
+    // Jika ada search query atau sudah pernah search, trigger search
+    if (searchQuery || hasSearched) {
+      setShouldSearch(true);
+    }
+  }, [searchQuery, hasSearched]);
+
+  const toggleFilter = useCallback((filterType, value) => {
+    let updated = false;
+    
+    switch (filterType) {
+      case 'angkatan':
+        setSelectedAngkatan(prev => {
+          updated = !prev.includes(value);
+          return prev.includes(value) 
+            ? prev.filter(v => v !== value) 
+            : [...prev, value];
+        });
+        break;
+      case 'fakultas':
+        setSelectedFakultas(prev => {
+          updated = !prev.includes(value);
+          return prev.includes(value) 
+            ? prev.filter(v => v !== value) 
+            : [...prev, value];
+        });
+        break;
+      case 'jenjang':
+        setSelectedJenjang(prev => {
+          updated = !prev.includes(value);
+          return prev.includes(value) 
+            ? prev.filter(v => v !== value) 
+            : [...prev, value];
+        });
+        break;
+    }
+    
+    if (updated) {
+      setIsTyping(false);
+      setShouldSearch(true);
+    }
+  }, []);
+
+  const activeFilterCount = selectedAngkatan.length + selectedFakultas.length + selectedJenjang.length;
+
+  // Effect untuk trigger search
+  useEffect(() => {
+    if (shouldSearch) {
+      performSearch();
+      setShouldSearch(false);
+    }
+  }, [shouldSearch, performSearch]);
+
+  // Effect untuk auto-reset ketika search kosong
+  useEffect(() => {
+    if (isSearchEmpty && hasSearched) {
+      setHasSearched(false);
+      setFilteredMembers([]);
+    }
+  }, [isSearchEmpty, hasSearched]);
+
+  // Tentukan state yang sedang aktif
+  const showEmptyState = !hasSearched && !isSearching && !searchQuery && activeFilterCount === 0;
+  const showResults = hasSearched && !isSearching;
+  const showLoading = isLoading;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
 
-      {/* Main content */}
-      <main className="flex-1 px-4 sm:px-6 py-8 sm:py-12">
-        <div className="max-w-6xl mx-auto">
-          {/* Search section */}
-          <div className="mb-6 sm:mb-8">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-900 mb-4 sm:mb-6">
-              Cari anggota
-            </h1>
+      <main className="flex-grow flex flex-col">
+        <div className="mx-auto px-4 sm:px-6 py-8 w-full max-w-7xl">
+          {/* Section 1: Header dan Search */}
+          <SearchSection
+            searchQuery={searchQuery}
+            onSearchChange={handleSearchChange}
+            onSearchSubmit={handleSearchSubmit}
+            onSuggestionSelect={handleSuggestionSelect}
+            onClearSearch={handleClearSearch}
+            isSearching={isSearching}
+            members={members}
+            showFilters={showFilters}
+            onToggleFilters={() => setShowFilters(!showFilters)}
+            activeFilterCount={activeFilterCount}
+          />
 
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  placeholder="Masukkan nama, NIM, nomor induk..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 pl-10 sm:pl-12 text-sm sm:text-base text-gray-700 bg-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
-                />
-                <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-              </div>
-              <button
-                onClick={handleSearch}
-                className="px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors"
-              >
-                Cari
-              </button>
+          {/* Section 2: Filters */}
+          <FilterSection
+            showFilters={showFilters}
+            selectedAngkatan={selectedAngkatan}
+            selectedFakultas={selectedFakultas}
+            selectedJenjang={selectedJenjang}
+            angkatanList={angkatanList}
+            fakultasList={fakultasList}
+            jenjangOptions={jenjangOptions}
+            onToggleFilter={toggleFilter}
+            onClearFilters={handleClearFilters}
+            activeFilterCount={activeFilterCount}
+            onCloseFilters={() => setShowFilters(false)}
+          />
+        </div>
+
+        {/* Section 3: Results - Full Width */}
+        {showResults ? (
+          <div className="flex-grow bg-gray-50">
+            <div className="mx-auto px-4 sm:px-6 py-6 w-full max-w-7xl">
+              <ResultsSection
+                filteredMembers={filteredMembers}
+                searchQuery={searchQuery}
+                activeFilterCount={activeFilterCount}
+                onClearSearch={handleClearSearch}
+                onClearFilters={handleClearFilters}
+                isSearching={isSearching}
+              />
             </div>
           </div>
-
-          {/* Loading and error states */}
-          {isLoading && (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+        ) : showLoading ? (
+          <div className="flex-grow flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-gray-600">Memuat data anggota...</p>
             </div>
-          )}
-
-          {isError && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-              {error?.message || "Gagal mengambil data anggota"}
-            </div>
-          )}
-
-          {/* Results section */}
-          {hasSearched && !isLoading && (
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              {filteredMembers.length > 0 ? (
-                <>
-                  {/* Desktop Table View */}
-                  <div className="hidden lg:block overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-blue-50 border-b border-gray-200">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-blue-900">
-                            Nama Lengkap
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-blue-900">
-                            No. Induk
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-blue-900">
-                            NIM
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-blue-900">
-                            Fakultas/Jurusan
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-blue-900">
-                            Angkatan
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-blue-900">
-                            Jenjang
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-blue-900">
-                            Tanggal Dilantik
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-blue-900">
-                            Pandega
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {filteredMembers.map((member) => (
-                          <tr
-                            key={member._id}
-                            className="hover:bg-gray-50 transition-colors"
-                          >
-                            <td className="px-4 py-3 text-sm text-gray-900 font-medium">
-                              {member.nama}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {member.noInduk}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {member.nim}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {member.fakultas}/{member.jurusan}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {member.angkatan}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                  member.jenjang === "muda"
-                                    ? "bg-green-100 text-green-800"
-                                    : member.jenjang === "madya"
-                                    ? "bg-red-100 text-red-800"
-                                    : "bg-yellow-100 text-yellow-800"
-                                }`}
-                              >
-                                {member.jenjang === "muda"
-                                  ? "Muda"
-                                  : member.jenjang === "madya"
-                                  ? "Madya"
-                                  : "Bhakti"}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
-                              {member.tanggalDilantik
-                                ? new Date(
-                                    member.tanggalDilantik
-                                  ).toLocaleDateString("id-ID", {
-                                    day: "2-digit",
-                                    month: "short",
-                                    year: "numeric",
-                                  })
-                                : "-"}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {member.pandega}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Mobile Card View */}
-                  <div className="lg:hidden divide-y divide-gray-200">
-                    {filteredMembers.map((member) => (
-                      <div
-                        key={member._id}
-                        className="p-4 hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-start">
-                            <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
-                              {member.nama}
-                            </h3>
-                            <div className="flex items-center mt-1 space-x-2">
-                              <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                  member.jenjang === "muda"
-                                    ? "bg-green-100 text-green-800"
-                                    : member.jenjang === "madya"
-                                    ? "bg-red-100 text-red-800"
-                                    : "bg-yellow-100 text-yellow-800"
-                                }`}
-                              >
-                                {member.jenjang === "muda"
-                                  ? "Muda"
-                                  : member.jenjang === "madya"
-                                  ? "Madya"
-                                  : "Bhakti"}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                Angkatan: {member.angkatan}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded ml-auto">
-                            <div className="flex items-center justify-end">
-                              <svg
-                                className="w-3 h-3 mr-1 flex-shrink-0"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                />
-                              </svg>
-                              <span className="font-medium">Dilantik:</span>
-                              <span className="ml-1">
-                                {member.tanggalDilantik
-                                  ? new Date(
-                                      member.tanggalDilantik
-                                    ).toLocaleDateString("id-ID")
-                                  : "Belum ditentukan"}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm text-gray-600">
-                            <div>
-                              <span className="font-medium">No. Induk:</span>{" "}
-                              {member.noInduk}
-                            </div>
-                            <div>
-                              <span className="font-medium">NIM:</span>{" "}
-                              {member.nim}
-                            </div>
-                            <div className="sm:col-span-2">
-                              <span className="font-medium">
-                                Fakultas/Jurusan:
-                              </span>{" "}
-                              {member.fakultas}/{member.jurusan}
-                            </div>
-                            <div className="sm:col-span-2">
-                              <span className="font-medium">Pandega:</span>{" "}
-                              {member.pandega}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="px-4 sm:px-6 py-8 sm:py-12 text-center">
-                  <div className="text-gray-400 mb-2">
-                    <Search className="w-8 h-8 sm:w-12 sm:h-12 mx-auto" />
-                  </div>
-                  <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-1">
-                    Tidak ada data yang ditemukan
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-500">
-                    Coba gunakan kata kunci yang berbeda atau periksa ejaan
-                    Anda.
-                  </p>
+          </div>
+        ) : isError ? (
+          <div className="flex-grow flex items-center justify-center">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg animate-fadeIn max-w-2xl mx-4">
+              <div className="flex items-center">
+                <span className="text-lg mr-2">❌</span>
+                <div>
+                  <p className="font-medium">Gagal mengambil data</p>
+                  <p className="text-sm mt-1">{error?.message || "Terjadi kesalahan saat mengambil data anggota"}</p>
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* Initial state - before search */}
-          {!hasSearched && !isLoading && (
-            <div className="text-center py-8 sm:py-12">
-              <div className="text-gray-400 mb-3 sm:mb-4">
-                <Search className="w-12 h-12 sm:w-16 sm:h-16 mx-auto" />
               </div>
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
-                Mulai pencarian anggota
-              </h3>
-              <p className="text-sm sm:text-base text-gray-500 max-w-sm sm:max-w-md mx-auto px-4">
-                Ketikkan nama, NIM, nomor induk, atau informasi lainnya pada
-                kolom pencarian di atas dan klik tombol "Cari" untuk menemukan
-                data anggota.
-              </p>
             </div>
-          )}
-        </div>
+          </div>
+        ) : showEmptyState ? (
+          <div className="flex-grow flex items-center justify-center">
+            <EmptyStateSection 
+              searchQuery={searchQuery}
+              activeFilterCount={activeFilterCount}
+            />
+          </div>
+        ) : null}
       </main>
 
       <Footer />

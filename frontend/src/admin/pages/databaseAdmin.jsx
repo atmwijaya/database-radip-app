@@ -287,6 +287,14 @@ const DatabaseAdmin = () => {
       filtered = filtered.filter((item) => item.jenjang === selectedJenjang);
     }
 
+    filtered.sort((a, b) => {
+      const nameA = a.nama?.toLowerCase() || '';
+      const nameB = b.nama?.toLowerCase() || '';
+      if (nameA < nameB) return -1;
+      if (nameA > nameB) return 1;
+      return 0;
+    });
+
     return filtered;
   }, [members, searchTerm, selectedAngkatan, selectedJenjang]);
 
@@ -389,7 +397,7 @@ const DatabaseAdmin = () => {
                 </button>
 
                 {showSortDropdown === "angkatan" && (
-                  <div className="absolute left-0 mt-2 w-64 bg-white rounded-md shadow-lg z-10 border border-gray-200 max-h-80 overflow-y-auto">
+                  <div className="absolute left-0 mt-2 w-64 bg-white rounded-md shadow-lg z-50 border border-gray-200 max-h-80 overflow-y-auto">
                     <div className="py-2">
                       <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                         Pilih Angkatan ({uniqueAngkatan.length})
@@ -463,7 +471,7 @@ const DatabaseAdmin = () => {
                 </button>
 
                 {showSortDropdown === "jenjang" && (
-                  <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                  <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200">
                     <div className="py-2">
                       <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                         Pilih Jenjang ({uniqueJenjang.length})
