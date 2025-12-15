@@ -69,12 +69,6 @@ const LoginPage = () => {
     setErrorNotification({ show: false, message: "" });
 
     try {
-      const { email, password, rememberMe } = formData;
-      console.log("Sending login request with:", {
-      email: formData.email,
-      password: formData.password,
-      rememberMe: formData.rememberMe
-    });
       const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: {
