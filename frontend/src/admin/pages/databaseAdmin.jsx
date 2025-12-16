@@ -5,6 +5,7 @@ import NavbarAdmin from "../components/navbarAdmin";
 import Footer from "../../components/footer";
 import { checkTokenExpiration } from "../../../../backend/utils/auth";
 import ImportAnggotaModal from "./importAnggotaModal";
+import QuickEdit from "./quickEdit";
 
 const monthNames = [
   "Januari",
@@ -167,6 +168,7 @@ const DatabaseAdmin = () => {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [showQuickEditModal, setShowQuickEditModal] = useState(false);
   const {
     data: members = [],
     isLoading,
@@ -210,11 +212,12 @@ const DatabaseAdmin = () => {
       }
     });
     const uniqueAngkatan = Array.from(angkatanSet)
-      .sort((a, b) => parseInt(b) - parseInt(a)) 
+      .sort((a, b) => parseInt(b) - parseInt(a))
       .map((angkatan) => ({
         value: angkatan,
         label: `Angkatan ${angkatan}`,
-        count: members.filter((m) => m.angkatan?.toString() === angkatan).length,
+        count: members.filter((m) => m.angkatan?.toString() === angkatan)
+          .length,
       }));
     const jenjangSet = new Set();
     members.forEach((member) => {
@@ -226,7 +229,12 @@ const DatabaseAdmin = () => {
       .sort()
       .map((jenjang) => ({
         value: jenjang,
-        label: jenjang === "muda" ? "Muda" : jenjang === "madya" ? "Madya" : "Bhakti",
+        label:
+          jenjang === "muda"
+            ? "Muda"
+            : jenjang === "madya"
+            ? "Madya"
+            : "Bhakti",
         count: members.filter((m) => m.jenjang === jenjang).length,
       }));
 
@@ -288,8 +296,8 @@ const DatabaseAdmin = () => {
     }
 
     filtered.sort((a, b) => {
-      const nameA = a.nama?.toLowerCase() || '';
-      const nameB = b.nama?.toLowerCase() || '';
+      const nameA = a.nama?.toLowerCase() || "";
+      const nameB = b.nama?.toLowerCase() || "";
       if (nameA < nameB) return -1;
       if (nameA > nameB) return 1;
       return 0;
@@ -314,13 +322,23 @@ const DatabaseAdmin = () => {
 
   const getFilterDisplayText = () => {
     if (selectedAngkatan && selectedJenjang) {
-      return `Angkatan ${selectedAngkatan} & ${selectedJenjang === "muda" ? "Muda" : selectedJenjang === "madya" ? "Madya" : "Bhakti"}`;
+      return `Angkatan ${selectedAngkatan} & ${
+        selectedJenjang === "muda"
+          ? "Muda"
+          : selectedJenjang === "madya"
+          ? "Madya"
+          : "Bhakti"
+      }`;
     }
     if (selectedAngkatan) {
       return `Angkatan ${selectedAngkatan}`;
     }
     if (selectedJenjang) {
-      return selectedJenjang === "muda" ? "Muda" : selectedJenjang === "madya" ? "Madya" : "Bhakti";
+      return selectedJenjang === "muda"
+        ? "Muda"
+        : selectedJenjang === "madya"
+        ? "Madya"
+        : "Bhakti";
     }
     return "Filter";
   };
@@ -358,14 +376,23 @@ const DatabaseAdmin = () => {
       <main className="flex-grow flex flex-col mx-auto px-4 sm:px-6 py-8 w-full">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Database Anggota</h1>
+            <h1 className="text-2xl font-bold text-gray-800">
+              Database Anggota
+            </h1>
             <p className="text-sm text-gray-600 mt-1">
               Total {filteredData.length} anggota ditemukan
               {selectedAngkatan && ` • Angkatan ${selectedAngkatan}`}
-              {selectedJenjang && ` • Jenjang ${selectedJenjang === "muda" ? "Muda" : selectedJenjang === "madya" ? "Madya" : "Bhakti"}`}
+              {selectedJenjang &&
+                ` • Jenjang ${
+                  selectedJenjang === "muda"
+                    ? "Muda"
+                    : selectedJenjang === "madya"
+                    ? "Madya"
+                    : "Bhakti"
+                }`}
             </p>
           </div>
-          
+
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
             {/* Desktop Sort/Filter - Visible on md and above */}
@@ -373,16 +400,26 @@ const DatabaseAdmin = () => {
               {/* Angkatan Filter Dropdown */}
               <div className="relative">
                 <button
-                  onClick={() => setShowSortDropdown(showSortDropdown === "angkatan" ? null : "angkatan")}
+                  onClick={() =>
+                    setShowSortDropdown(
+                      showSortDropdown === "angkatan" ? null : "angkatan"
+                    )
+                  }
                   className={`px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 ${
                     selectedAngkatan
                       ? "bg-blue-100 text-blue-700 border border-blue-300"
                       : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                   }`}
                 >
-                  <span>{selectedAngkatan ? `Angkatan ${selectedAngkatan}` : "Filter Angkatan"}</span>
+                  <span>
+                    {selectedAngkatan
+                      ? `Angkatan ${selectedAngkatan}`
+                      : "Filter Angkatan"}
+                  </span>
                   <svg
-                    className={`w-4 h-4 transition-transform ${showSortDropdown === "angkatan" ? "rotate-180" : ""}`}
+                    className={`w-4 h-4 transition-transform ${
+                      showSortDropdown === "angkatan" ? "rotate-180" : ""
+                    }`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -416,7 +453,9 @@ const DatabaseAdmin = () => {
                           }`}
                         >
                           <div className="flex items-center">
-                            <span className="font-medium">{angkatan.label}</span>
+                            <span className="font-medium">
+                              {angkatan.label}
+                            </span>
                           </div>
                           <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
                             {angkatan.count}
@@ -439,7 +478,11 @@ const DatabaseAdmin = () => {
               {/* Jenjang Filter Dropdown */}
               <div className="relative">
                 <button
-                  onClick={() => setShowSortDropdown(showSortDropdown === "jenjang" ? null : "jenjang")}
+                  onClick={() =>
+                    setShowSortDropdown(
+                      showSortDropdown === "jenjang" ? null : "jenjang"
+                    )
+                  }
                   className={`px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 ${
                     selectedJenjang
                       ? "bg-blue-100 text-blue-700 border border-blue-300"
@@ -456,7 +499,9 @@ const DatabaseAdmin = () => {
                       : "Filter Jenjang"}
                   </span>
                   <svg
-                    className={`w-4 h-4 transition-transform ${showSortDropdown === "jenjang" ? "rotate-180" : ""}`}
+                    className={`w-4 h-4 transition-transform ${
+                      showSortDropdown === "jenjang" ? "rotate-180" : ""
+                    }`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -519,6 +564,26 @@ const DatabaseAdmin = () => {
                   Reset Filter
                 </button>
               )}
+
+              <button
+                onClick={() => setShowQuickEditModal(true)}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md inline-flex items-center"
+              >
+                <svg
+                  className="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+                Quick Edit
+              </button>
 
               {/* Add Data Button */}
               <Link
@@ -611,7 +676,11 @@ const DatabaseAdmin = () => {
                 {/* Filter Dropdown Button for Mobile */}
                 <div className="relative">
                   <button
-                    onClick={() => setShowSortDropdown(showSortDropdown === "mobile" ? null : "mobile")}
+                    onClick={() =>
+                      setShowSortDropdown(
+                        showSortDropdown === "mobile" ? null : "mobile"
+                      )
+                    }
                     className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 inline-flex items-center"
                   >
                     <span>Filter: {getFilterDisplayText()}</span>
@@ -643,7 +712,9 @@ const DatabaseAdmin = () => {
                             key={angkatan.value}
                             onClick={() => {
                               setSelectedAngkatan(
-                                selectedAngkatan === angkatan.value ? null : angkatan.value
+                                selectedAngkatan === angkatan.value
+                                  ? null
+                                  : angkatan.value
                               );
                             }}
                             className={`w-full text-left px-4 py-3 text-sm flex items-center justify-between ${
@@ -653,7 +724,9 @@ const DatabaseAdmin = () => {
                             }`}
                           >
                             <div className="flex items-center">
-                              <span className="font-medium">{angkatan.label}</span>
+                              <span className="font-medium">
+                                {angkatan.label}
+                              </span>
                             </div>
                             <div className="flex items-center space-x-2">
                               <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
@@ -675,7 +748,9 @@ const DatabaseAdmin = () => {
                             key={jenjang.value}
                             onClick={() => {
                               setSelectedJenjang(
-                                selectedJenjang === jenjang.value ? null : jenjang.value
+                                selectedJenjang === jenjang.value
+                                  ? null
+                                  : jenjang.value
                               );
                             }}
                             className={`w-full text-left px-4 py-3 text-sm flex items-center justify-between ${
@@ -685,7 +760,9 @@ const DatabaseAdmin = () => {
                             }`}
                           >
                             <div className="flex items-center">
-                              <span className="font-medium">{jenjang.label}</span>
+                              <span className="font-medium">
+                                {jenjang.label}
+                              </span>
                             </div>
                             <div className="flex items-center space-x-2">
                               <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
@@ -715,7 +792,7 @@ const DatabaseAdmin = () => {
                   )}
                 </div>
               </div>
-              
+
               {/* Active Filters Display for Mobile */}
               {(selectedAngkatan || selectedJenjang) && (
                 <div className="flex flex-wrap gap-2">
@@ -823,6 +900,20 @@ const DatabaseAdmin = () => {
             queryClient={queryClient}
             monthNames={monthNames}
             fakultasJurusan={fakultasJurusan}
+          />
+        )}
+
+        {/* Add after the Import Modal */}
+        {showQuickEditModal && (
+          <QuickEdit
+            onClose={() => setShowQuickEditModal(false)}
+            onSuccess={() => {
+              queryClient.invalidateQueries(["members", "admin"]);
+              setSuccessMessage(
+                "Jenjang berhasil diupdate untuk anggota terpilih!"
+              );
+              setTimeout(() => setSuccessMessage(null), 3000);
+            }}
           />
         )}
 
@@ -1084,7 +1175,9 @@ const DatabaseAdmin = () => {
             ))
           ) : (
             <div className="text-center py-8 text-gray-500">
-              {isLoading ? "Memuat data..." : "Tidak ada data yang ditemukan dengan filter yang dipilih"}
+              {isLoading
+                ? "Memuat data..."
+                : "Tidak ada data yang ditemukan dengan filter yang dipilih"}
             </div>
           )}
         </div>
