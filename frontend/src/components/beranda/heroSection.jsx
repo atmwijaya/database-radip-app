@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom';
 
 const HeroSection = () => {
     const navigate = useNavigate();
-    const adminPhoneNumber = "6281234567890"; 
-    const adminName = "Admin Database"; 
+    const adminPhoneNumber = "6283857231135"; 
+    const adminName = "Kakak Admin"; 
 
     const handleCekNamaClick = () => {
         navigate('/daftar-anggota');

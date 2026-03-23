@@ -9,8 +9,8 @@ import {
 } from "react-icons/fa";
 
 const SekretariatSection = () => {
-  const adminPhoneNumber = "6281234567890";
-  const adminName = "Admin Database";
+  const adminPhoneNumber = "6283857231135";
+  const adminName = "Kakak Admin";
 
   const handleWhatsAppClick = () => {
     const message = encodeURIComponent(
@@ -38,8 +38,8 @@ const SekretariatSection = () => {
       icon: <FaWhatsapp className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "WhatsApp Sekretariat",
       content: [
-        { number: "+62 812-1545-2982", label: "Narahubung Putra" },
-        { number: "+62 821-3676-1312", label: "Narahubung Putri" },
+        { number: "+6283857231135", label: "Sekretaris Putra" },
+        { number: "+6282245665332", label: "Sekretaris Putri" },
       ],
       action: "Kirim Pesan",
     },
@@ -48,7 +48,7 @@ const SekretariatSection = () => {
       title: "Email Sekretariat",
       content: "sekreradip@gmail.com",
       action: "Kirim Email",
-      link: "mailto:sekretariat@racanadiponegoro.ac.id",
+      link: "mailto:sekreradip@gmail.com",
     },
     {
       icon: <FaClock className="w-4 h-4 sm:w-5 sm:h-5" />,
