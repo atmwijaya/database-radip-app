@@ -94,6 +94,7 @@ const fakultasJurusan = {
     "Oseanografi",
     "Perikanan Tangkap",
     "Teknologi Hasil Perikanan",
+    "Teknologi Bisnis Perikanan dan Kelautan (PSDKU Jepara)"
   ],
   Psikologi: ["Psikologi"],
   Vokasi: [

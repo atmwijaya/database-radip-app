@@ -5,7 +5,7 @@ const Footer = () => {
     <footer className="bg-amber-500 py-3 sm:py-4 mt-auto">
       <div className="flex justify-center gap-2 px-4">
         <p className="text-white font-medium text-sm sm:text-base">
-          2025 Copyright Racana Diponegoro
+          2026 Copyright Racana Diponegoro
         </p>
         <span className="text-white font-medium text-sm sm:text-base">| Version 1.3.5</span>
       </div>
