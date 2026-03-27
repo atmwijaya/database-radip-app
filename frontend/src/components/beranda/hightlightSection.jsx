@@ -6,7 +6,7 @@ import {
 } from "react-icons/fa";
 
 const HighlightSection = () => {
-    const adminPhoneNumber = "6281234567890";
+    const adminPhoneNumber = "6283857231135";
     const adminName = "Admin Database";
 
     const handleAdminClick = () => {
