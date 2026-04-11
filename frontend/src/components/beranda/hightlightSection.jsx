@@ -89,26 +89,6 @@ const HighlightSection = () => {
                         </div>
                     ))}
                 </div>
-
-                {/* CTA Section - Mobile Optimized */}
-                <div className="mt-8 sm:mt-10 md:mt-12 text-center">
-                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl sm:rounded-2xl p-5 sm:p-6 md:p-8 text-white mx-2 sm:mx-0">
-                        <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-3 sm:mb-4">
-                            Belum masuk Database Anggota secara online?
-                        </h3>
-                        <p className="text-sm sm:text-base mb-4 sm:mb-6 max-w-2xl mx-auto opacity-90">
-                            Jika Anda anggota Racana Diponegoro dan belum terdaftar dalam database,
-                            segera hubungi admin untuk verifikasi dan pendaftaran.
-                        </p>
-                        <button 
-                            onClick={handleAdminClick}
-                            className="bg-white text-blue-600 hover:bg-blue-50 font-semibold py-3 px-6 sm:py-3 sm:px-8 rounded-lg transition-colors duration-200 flex items-center justify-center mx-auto text-sm sm:text-base active:scale-95"
-                        >
-                            <FaWhatsapp className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                            Hubungi Admin via WhatsApp
-                        </button>
-                    </div>
-                </div>
             </div>
         </section>
     );

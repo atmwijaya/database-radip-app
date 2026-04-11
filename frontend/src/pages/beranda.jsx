@@ -16,7 +16,7 @@ const Beranda = () => {
         <HeroSection />
         <StatistikSection />
         <HighlightSection />
-        <SekretariatSection />
+        {/* <SekretariatSection /> */}
       </main>
       
       <Footer />
