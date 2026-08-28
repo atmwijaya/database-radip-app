@@ -902,6 +902,7 @@ const DatabaseAdmin = () => {
             queryClient={queryClient}
             monthNames={monthNames}
             fakultasJurusan={fakultasJurusan}
+            existingMembers={members}
           />
         )}
 

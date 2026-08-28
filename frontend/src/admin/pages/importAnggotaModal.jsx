@@ -31,6 +31,7 @@ const ImportAnggotaModal = ({
   queryClient,
   monthNames,
   fakultasJurusan,
+  existingMembers = [],
 }) => {
   const [importData, setImportData] = useState([]);
   const [importErrors, setImportErrors] = useState([]);
@@ -88,6 +89,21 @@ const ImportAnggotaModal = ({
     },
   });
 
+  const fakultasAbbreviationMap = {
+    "FH": "Hukum",
+    "FEB": "Ekonomika dan Bisnis",
+    "FT": "Teknik",
+    "FK": "Kedokteran",
+    "FPP": "Peternakan dan Pertanian",
+    "FIB": "Ilmu Budaya",
+    "FISIP": "Ilmu Sosial dan Politik",
+    "FSM": "Sains dan Matematika",
+    "FKM": "Kesehatan Masyarakat",
+    "FPIK": "Perikanan dan Ilmu Kelautan",
+    "FPSI": "Psikologi",
+    "SV": "Vokasi"
+  };
+
   // Fungsi untuk memvalidasi data import
   const validateImportData = (data) => {
     const validData = [];
@@ -96,8 +112,17 @@ const ImportAnggotaModal = ({
     data.forEach((row, index) => {
       const rowErrors = [];
 
+      // Ambil nilai dari kolom yang baru
+      const namaVal = row["Nama Lengkap"] || row.nama;
+      const noIndukVal = row["Nomor Induk"] || row.noInduk;
+      const nimVal = row["NIM"] || row.nim || row.Nim;
+      const fakultasJurusanVal = row["Fakultas/Jurusan"] || row["Fakultas / Jurusan"];
+      const angkatanVal = row["Angkatan"] || row.angkatan;
+      const ttlVal = row["TTL"] || row.ttl;
+      const pandegaVal = row["Pandega"] || row.pandega;
+      
       // Validasi NIM
-      let nimValue = row.nim || row.NIM || row.Nim;
+      let nimValue = nimVal;
 
       if (!nimValue) {
         rowErrors.push(`NIM harus diisi`);
@@ -111,88 +136,93 @@ const ImportAnggotaModal = ({
         } else if (!/^\d+$/.test(nimStr)) {
           rowErrors.push(`NIM harus berupa angka`);
         } else {
-          row.nim = nimStr;
+          nimValue = nimStr;
         }
       }
 
       // Validasi Nama
-      if (!row.nama || typeof row.nama !== "string") {
-        rowErrors.push(`Nama harus diisi`);
+      if (!namaVal || typeof namaVal !== "string") {
+        rowErrors.push(`Nama Lengkap harus diisi`);
       }
 
-      if (!row.jenjang || !["muda", "madya", "bhakti"].includes(row.jenjang)) {
-        rowErrors.push("Jenjang harus diisi dengan: muda, madya, atau bhakti");
-      }
+      // Validasi Fakultas/Jurusan
+      let finalFakultas = "";
+      let finalJurusan = "";
+      if (!fakultasJurusanVal || typeof fakultasJurusanVal !== "string") {
+        rowErrors.push(`Fakultas/Jurusan harus diisi`);
+      } else {
+        // Membersihkan spasi sebelum dan sesudah garis miring
+        const cleanVal = fakultasJurusanVal.replace(/\s*\/\s*/g, '/');
+        const parts = cleanVal.split("/");
+        
+        if (parts.length < 2) {
+           rowErrors.push(`Format Fakultas/Jurusan tidak valid. Gunakan garis miring (/) pemisah, contoh: FSM/Fisika`);
+        } else {
+           let inputFakultas = parts[0].trim();
+           let inputJurusan = parts[1].trim();
+           
+           // Hilangkan kata "Fakultas" atau "Sekolah" jika ada
+           inputFakultas = inputFakultas.replace(/^(Fakultas|Sekolah)\s+/i, '').trim();
 
-      // Validasi Tanggal Dilantik (format DD/MM/YYYY)
-      if (!row.tanggalDilantik) {
-        rowErrors.push("Tanggal dilantik harus diisi");
-      } else if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(row.tanggalDilantik)) {
-        rowErrors.push("Format tanggal dilantik harus DD/MM/YYYY");
-      }
-
-      // Validasi Fakultas
-      if (
-        !row.fakultas ||
-        !Object.keys(fakultasJurusan).includes(row.fakultas)
-      ) {
-        rowErrors.push(`Fakultas tidak valid`);
-      }
-
-      // Validasi Jurusan
-      if (row.fakultas && row.jurusan) {
-        const validJurusan = fakultasJurusan[row.fakultas] || [];
-        if (!validJurusan.includes(row.jurusan)) {
-          rowErrors.push(`Jurusan tidak valid untuk fakultas ${row.fakultas}`);
+           // Resolve Abbreviation
+           finalFakultas = fakultasAbbreviationMap[inputFakultas.toUpperCase()] || inputFakultas;
+           
+           // Case insensitive check for fakultas
+           const matchedFakultasKey = Object.keys(fakultasJurusan).find(k => k.toLowerCase() === finalFakultas.toLowerCase());
+           
+           if (!matchedFakultasKey) {
+             rowErrors.push(`Fakultas tidak valid: ${inputFakultas}`);
+           } else {
+             finalFakultas = matchedFakultasKey; // Use exact case from object
+             const validJurusanList = fakultasJurusan[matchedFakultasKey] || [];
+             
+             // Case insensitive check for jurusan
+             const matchedJurusan = validJurusanList.find(j => j.toLowerCase() === inputJurusan.toLowerCase());
+             if (!matchedJurusan) {
+               rowErrors.push(`Jurusan tidak valid untuk fakultas ${finalFakultas}: ${inputJurusan}`);
+             } else {
+               finalJurusan = matchedJurusan; // Use exact case from object
+             }
+           }
         }
       }
 
       // Validasi Angkatan
-      if (!row.angkatan || !/^\d{4}$/.test(row.angkatan.toString())) {
+      if (!angkatanVal || !/^\d{4}$/.test(angkatanVal.toString().trim())) {
         rowErrors.push(`Angkatan harus 4 digit angka`);
       }
 
-      // Validasi Tempat Lahir
-      if (!row.tempatLahir) {
-        rowErrors.push(`Tempat lahir harus diisi`);
-      }
-
-      // Validasi Tanggal Lahir
-      if (!row.tanggalLahir) {
-        rowErrors.push(`Tanggal lahir harus diisi`);
-      } else if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(row.tanggalLahir)) {
-        rowErrors.push(`Format tanggal lahir harus DD/MM/YYYY`);
+      // Validasi TTL
+      let processedTTL = ttlVal;
+      if (!processedTTL) {
+        rowErrors.push(`TTL harus diisi`);
+      } else {
+        processedTTL = processedTTL.toString();
+        // Hapus spasi berlebih sebelum dan sesudah koma, lalu tambahkan 1 spasi setelah koma
+        processedTTL = processedTTL.replace(/\s*,\s*/g, ', ');
+        // Format menjadi Title Case (Huruf depan kapital, sisanya kecil)
+        processedTTL = processedTTL.replace(
+          /\w\S*/g,
+          (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+        );
       }
 
       if (rowErrors.length === 0) {
-        // Format tanggal lahir untuk TTL
-        const [day, month, year] = row.tanggalLahir.split("/");
-        const formattedDate = `${day} ${
-          monthNames[parseInt(month) - 1]
-        } ${year}`;
-        const ttl = `${row.tempatLahir}, ${formattedDate}`;
-
-        // Format tanggal dilantik
-        const [dayDilantik, monthDilantik, yearDilantik] =
-          row.tanggalDilantik.split("/");
-        const formattedTanggalDilantik = `${yearDilantik}-${monthDilantik.padStart(
-          2,
-          "0"
-        )}-${dayDilantik.padStart(2, "0")}`;
+        // Default values for missing fields from excel
+        const today = new Date();
+        const formattedTanggalDilantik = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
         validData.push({
-          nama: row.nama,
-          noInduk: row.noInduk || "-",
-          nim: row.nim,
-          fakultas: row.fakultas,
-          jurusan: row.jurusan,
-          angkatan: parseInt(row.angkatan),
-          jenjang: row.jenjang,
-          tanggalDilantik: formattedTanggalDilantik,
-          tempatLahir: row.tempatLahir,
-          tanggalLahir: row.tanggalLahir,
-          ttl: ttl,
-          pandega: row.pandega || "-",
+          nama: namaVal,
+          noInduk: noIndukVal || "-",
+          nim: nimValue,
+          fakultas: finalFakultas,
+          jurusan: finalJurusan,
+          angkatan: parseInt(angkatanVal),
+          jenjang: "muda", // Default
+          tanggalDilantik: formattedTanggalDilantik, // Default today
+          ttl: processedTTL, // TTL yang sudah di-format Title Case
+          pandega: pandegaVal || "-",
         });
       } else {
         errors.push({
@@ -287,16 +317,32 @@ const ImportAnggotaModal = ({
   const checkForDuplicates = (data) => {
     const duplicates = [];
     const nimSet = new Set();
+    const existingNimSet = new Set(existingMembers.map(m => m.nim));
+    const existingNameSet = new Set(existingMembers.map(m => m.nama?.toLowerCase()));
 
     data.forEach((item, index) => {
+      let isDbDuplicate = false;
+      let isFileDuplicate = false;
+
+      // Check database duplicates by NIM or Nama
+      if (existingNimSet.has(item.nim) || (item.nama && existingNameSet.has(item.nama.toLowerCase()))) {
+        isDbDuplicate = true;
+      }
+
+      // Check file duplicates
       if (nimSet.has(item.nim)) {
+        isFileDuplicate = true;
+      } else {
+        nimSet.add(item.nim);
+      }
+
+      if (isDbDuplicate || isFileDuplicate) {
         duplicates.push({
           row: index + 1,
           nim: item.nim,
           nama: item.nama,
+          type: isDbDuplicate ? 'db' : 'file'
         });
-      } else {
-        nimSet.add(item.nim);
       }
     });
 
@@ -310,9 +356,12 @@ const ImportAnggotaModal = ({
     // Hapus data duplikat sebelum mengirim
     const uniqueData = [];
     const nimSet = new Set();
+    const existingNimSet = new Set(existingMembers.map(m => m.nim));
+    const existingNameSet = new Set(existingMembers.map(m => m.nama?.toLowerCase()));
 
     importData.forEach((item) => {
-      if (!nimSet.has(item.nim)) {
+      const isDbDuplicate = existingNimSet.has(item.nim) || (item.nama && existingNameSet.has(item.nama.toLowerCase()));
+      if (!isDbDuplicate && !nimSet.has(item.nim)) {
         nimSet.add(item.nim);
         uniqueData.push(item);
       }
@@ -326,30 +375,24 @@ const ImportAnggotaModal = ({
   const downloadTemplate = () => {
     const templateData = [
       {
-        nama: "John Doe",
-        noInduk: "-",
-        nim: "'12345678901234",
-        fakultas: "Ekonomika dan Bisnis",
-        jurusan: "Manajemen",
-        angkatan: "2020",
-        jenjang: "Muda",
-        tanggalDilantik: "'15/01/2024",
-        tempatLahir: "Jakarta",
-        tanggalLahir: "'15/01/2002",
-        pandega: "-",
+        "Nama Lengkap": "John Doe",
+        "Nomor Induk": "11.046.1234",
+        "NIM": "'12345678901234",
+        "Fakultas/Jurusan": "FSM/Informatika",
+        "Angkatan": "2020",
+        "TTL": "Jakarta, 15 Januari 2002",
+        "Jenis Kelamin": "Laki-laki",
+        "Pandega": "-"
       },
       {
-        nama: "Jane Smith",
-        noInduk: "-",
-        nim: "'12345678901235",
-        fakultas: "Teknik",
-        jurusan: "Teknik Sipil",
-        angkatan: "2021",
-        jenjang: "Muda",
-        tanggalDilantik: "'15/01/2024",
-        tempatLahir: "Surabaya",
-        tanggalLahir: "'20/05/2001",
-        pandega: "-",
+        "Nama Lengkap": "Jane Smith",
+        "Nomor Induk": "-",
+        "NIM": "'12345678901235",
+        "Fakultas/Jurusan": "FT/Teknik Sipil",
+        "Angkatan": "2021",
+        "TTL": "Surabaya, 20 Mei 2003",
+        "Jenis Kelamin": "Perempuan",
+        "Pandega": "-"
       },
     ];
 
@@ -399,9 +442,12 @@ const ImportAnggotaModal = ({
   const handleRemoveDuplicates = () => {
     const uniqueData = [];
     const nimSet = new Set();
+    const existingNimSet = new Set(existingMembers.map(m => m.nim));
+    const existingNameSet = new Set(existingMembers.map(m => m.nama?.toLowerCase()));
 
     importData.forEach((item) => {
-      if (!nimSet.has(item.nim)) {
+      const isDbDuplicate = existingNimSet.has(item.nim) || (item.nama && existingNameSet.has(item.nama.toLowerCase()));
+      if (!isDbDuplicate && !nimSet.has(item.nim)) {
         nimSet.add(item.nim);
         uniqueData.push(item);
       }
@@ -531,7 +577,7 @@ const ImportAnggotaModal = ({
               </p>
               <p className="text-sm text-blue-600 mt-1">
                 Gunakan template ini untuk memastikan format data yang benar. 
-                Kolom noInduk dan pandega opsional (isi '-' jika kosong).
+                Sesuai dengan format spreadsheet: Nama Lengkap, Nomor Induk, NIM, Fakultas/Jurusan (bisa singkatan fakultas, cth: FSM/Fisika), Angkatan, TTL, Jenis Kelamin, Pandega.
               </p>
             </div>
             <button
@@ -649,7 +695,7 @@ const ImportAnggotaModal = ({
                         No
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Nama
+                        Nama Lengkap
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         NIM
@@ -676,15 +722,16 @@ const ImportAnggotaModal = ({
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {importData.slice(0, 10).map((item, index) => {
-                      const isDuplicate = checkForDuplicates(importData).some(
-                        (dup) => dup.nim === item.nim && dup.row !== index + 1
+                      const duplicates = checkForDuplicates(importData);
+                      const duplicateInfo = duplicates.find(
+                        (dup) => dup.nim === item.nim && dup.row === index + 1
                       );
 
                       return (
                         <tr
                           key={index}
                           className={
-                            isDuplicate
+                            duplicateInfo
                               ? "bg-yellow-50 hover:bg-yellow-100"
                               : "hover:bg-gray-50"
                           }
@@ -729,19 +776,18 @@ const ImportAnggotaModal = ({
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-500">
                             <div>
-                              <div className="font-medium">{item.tempatLahir}</div>
-                              <div className="text-xs text-gray-400">
-                                {item.tanggalLahir}
-                              </div>
+                              <div className="font-medium">{item.ttl}</div>
                             </div>
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-500">
                             {item.pandega || "-"}
                           </td>
                           <td className="px-4 py-3 text-sm">
-                            {isDuplicate ? (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                ⚠️ Duplikat
+                            {duplicateInfo ? (
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                duplicateInfo.type === 'db' ? 'bg-orange-100 text-orange-800' : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {duplicateInfo.type === 'db' ? '⚠️ Sudah Ada (Db)' : '⚠️ Duplikat (File)'}
                               </span>
                             ) : (
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -782,12 +828,10 @@ const ImportAnggotaModal = ({
                       </svg>
                       <div>
                         <p className="font-medium text-yellow-800">
-                          Peringatan: {duplicates.length} Data Duplikat Ditemukan
+                          Peringatan: {duplicates.length} Data Bermasalah Ditemukan
                         </p>
                         <p className="text-sm text-yellow-700 mt-1">
-                          Data dengan NIM yang sama tidak akan diimport. Klik
-                          "Hapus Duplikat" untuk membersihkan data sebelum
-                          import.
+                          Data duplikat di dalam file atau yang sudah ada di database (NIM/Nama sama) tidak akan diimport. Klik "Hapus Duplikat" untuk membuang data tersebut sebelum import.
                         </p>
                       </div>
                     </div>
