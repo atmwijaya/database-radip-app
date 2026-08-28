@@ -126,6 +126,8 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
     displayTanggalLahir: "",
     dateValue: "",
     pandega: "",
+    isPurnacisya: false,
+    isPurnaPandega: false,
   });
 
   const [errors, setErrors] = useState({
@@ -304,6 +306,8 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
         ttl,
         pandega: formData.pandega || "-",
         tanggalLahir: formData.tanggalLahir,
+        isPurnacisya: formData.isPurnacisya,
+        isPurnaPandega: formData.isPurnaPandega,
       };
 
       const response = await fetch(`${API_BASE_URL}/api/db`, {
@@ -368,6 +372,8 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
       displayTanggalLahir: "",
       dateValue: "",
       pandega: "",
+      isPurnacisya: false,
+      isPurnaPandega: false,
     });
     setJurusanOptions([]);
     setErrors({
@@ -716,6 +722,32 @@ const CreateAnggota = ({ onClose, onSuccess }) => {
                       className="w-full p-3 border border-gray-300 rounded-lg"
                       required
                     />
+                  </div>
+                </div>
+
+                {/* Row 7: Status Khusus */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-4">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="isPurnacisya"
+                        checked={formData.isPurnacisya}
+                        onChange={(e) => setFormData({ ...formData, isPurnacisya: e.target.checked })}
+                        className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="text-gray-700 font-medium">Purnacisya (Wisuda)</span>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="isPurnaPandega"
+                        checked={formData.isPurnaPandega}
+                        onChange={(e) => setFormData({ ...formData, isPurnaPandega: e.target.checked })}
+                        className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="text-gray-700 font-medium">Purna Pandega (Usia &gt; 25 Tahun)</span>
+                    </label>
                   </div>
                 </div>
 

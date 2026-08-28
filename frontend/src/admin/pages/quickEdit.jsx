@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { GraduationCap } from "lucide-react";
 import StepOneSection from "../components/quickEdit/stepOneSection";
 import StepTwoSection from "../components/quickEdit/stepTwoSection";
 
@@ -96,7 +97,7 @@ const QuickEdit = ({ onClose, onSuccess }) => {
         return;
       }
       
-      if (!tanggalDilantik) {
+      if ((newJenjang === "madya" || newJenjang === "bhakti") && !tanggalDilantik) {
         setError("Tanggal dilantik wajib diisi");
         setTimeout(() => setError(null), 3000);
         return;
@@ -150,9 +151,16 @@ const QuickEdit = ({ onClose, onSuccess }) => {
       const updatePromises = selectedMembers.map((member) => {
         const updateData = {
           ...member,
-          jenjang: newJenjang,
-          tanggalDilantik: tanggalDilantik,
         };
+        
+        if (newJenjang === "madya" || newJenjang === "bhakti") {
+          updateData.jenjang = newJenjang;
+          updateData.tanggalDilantik = tanggalDilantik;
+        } else if (newJenjang === "purnacisya") {
+          updateData.isPurnacisya = true;
+        } else if (newJenjang === "purnapandega") {
+          updateData.isPurnaPandega = true;
+        }
         
         // Jika naik ke bhakti, tambahkan nama pandega
         if (newJenjang === "bhakti" && pandegaData[member._id]?.trim()) {
@@ -188,10 +196,14 @@ const QuickEdit = ({ onClose, onSuccess }) => {
       await queryClient.invalidateQueries(["members", "public"]);
       await queryClient.invalidateQueries(["members", "quickedit"]);
 
+      let successAction = "";
+      if (newJenjang === "madya") successAction = "ke jenjang Madya";
+      else if (newJenjang === "bhakti") successAction = "ke jenjang Bhakti";
+      else if (newJenjang === "purnacisya") successAction = "menjadi Purnacisya";
+      else if (newJenjang === "purnapandega") successAction = "menjadi Purna Pandega";
+
       setSuccessMessage(
-        `✅ Berhasil mengupdate ${selectedMembers.length} anggota ke jenjang ${
-          newJenjang === "madya" ? "Madya" : "Bhakti"
-        }`
+        `✅ Berhasil mengupdate ${selectedMembers.length} anggota ${successAction}`
       );
 
       // Tunggu 2 detik, lalu redirect
@@ -199,7 +211,7 @@ const QuickEdit = ({ onClose, onSuccess }) => {
         onClose();
         navigate("/admin/database-anggota");
         if (onSuccess) {
-          onSuccess(`${selectedMembers.length} anggota berhasil diupdate ke jenjang ${newJenjang === "madya" ? "Madya" : "Bhakti"}`);
+          onSuccess(`${selectedMembers.length} anggota berhasil diupdate ${successAction}`);
         }
       }, 2000);
     } catch (err) {
@@ -232,7 +244,7 @@ const QuickEdit = ({ onClose, onSuccess }) => {
   const steps = getStepTitles();
   const currentStepNumber = currentStep;
   const isConfirmStep = (newJenjang === "bhakti" && currentStep === 3) || 
-                       (newJenjang === "madya" && currentStep === 2);
+                       (newJenjang !== "bhakti" && currentStep === 2);
 
   return (
     <AnimatePresence>
@@ -256,10 +268,10 @@ const QuickEdit = ({ onClose, onSuccess }) => {
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">
-                  Quick Edit Jenjang
+                  Quick Edit
                 </h2>
                 <p className="text-gray-600 mt-1">
-                  Naikkan jenjang untuk beberapa anggota sekaligus
+                  Ubah jenjang atau status untuk beberapa anggota sekaligus
                 </p>
               </div>
               <button
@@ -365,17 +377,22 @@ const QuickEdit = ({ onClose, onSuccess }) => {
                             <p className="text-xl font-bold text-gray-900">{selectedMembers.length} orang</p>
                           </div>
                           <div className="bg-white p-4 rounded-lg border border-gray-200">
-                            <p className="text-sm text-gray-600 mb-1">Jenjang Baru</p>
+                            <p className="text-sm text-gray-600 mb-1">Aksi</p>
                             <p className={`text-xl font-bold ${
-                              newJenjang === "madya" ? "text-red-700" : "text-yellow-700"
+                              newJenjang === "madya" ? "text-red-700" :
+                              newJenjang === "bhakti" ? "text-yellow-700" : "text-blue-700"
                             }`}>
-                              {newJenjang === "madya" ? "Madya" : "Bhakti"}
+                              {newJenjang === "madya" ? "Madya" :
+                               newJenjang === "bhakti" ? "Bhakti" :
+                               newJenjang === "purnacisya" ? "Set Purnacisya" : "Set Purna Pandega"}
                             </p>
                           </div>
-                          <div className="bg-white p-4 rounded-lg border border-gray-200">
-                            <p className="text-sm text-gray-600 mb-1">Tanggal Dilantik</p>
-                            <p className="text-xl font-bold text-gray-900">{tanggalDilantik}</p>
-                          </div>
+                          {(newJenjang === "madya" || newJenjang === "bhakti") && (
+                            <div className="bg-white p-4 rounded-lg border border-gray-200">
+                              <p className="text-sm text-gray-600 mb-1">Tanggal Dilantik</p>
+                              <p className="text-xl font-bold text-gray-900">{tanggalDilantik}</p>
+                            </div>
+                          )}
                           {newJenjang === "bhakti" && (
                             <div className="bg-white p-4 rounded-lg border border-gray-200">
                               <p className="text-sm text-gray-600 mb-1">Pandega Terisi</p>
@@ -394,26 +411,47 @@ const QuickEdit = ({ onClose, onSuccess }) => {
                             <div key={member._id} className="bg-white p-4 rounded-lg border border-gray-200">
                               <div className="flex items-center justify-between mb-2">
                                 <div>
-                                  <h5 className="font-medium text-gray-900">{member.nama}</h5>
+                                  <h5 className={`font-medium flex items-center gap-2 ${
+                                    newJenjang === "purnacisya" ? "text-yellow-600" : "text-gray-900"
+                                  }`}>
+                                    {member.nama}
+                                    {newJenjang === "purnacisya" && (
+                                      <GraduationCap className="w-4 h-4 text-yellow-600" />
+                                    )}
+                                    {newJenjang === "purnapandega" && (
+                                      <span className="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full font-bold">
+                                        26+
+                                      </span>
+                                    )}
+                                  </h5>
                                   <p className="text-sm text-gray-600">{member.nim} • {member.fakultas}</p>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   <span className={`text-xs font-medium px-2 py-1 rounded ${
-                                    member.jenjang === "muda"
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-red-100 text-red-800"
+                                    member.jenjang === "muda" ? "bg-green-100 text-green-800" :
+                                    member.jenjang === "madya" ? "bg-red-100 text-red-800" :
+                                    "bg-yellow-100 text-yellow-800"
                                   }`}>
-                                    {member.jenjang === "muda" ? "Muda" : "Madya"}
+                                    {member.jenjang === "muda" ? "Muda" : member.jenjang === "madya" ? "Madya" : "Bhakti"}
                                   </span>
-                                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                  </svg>
+                                  
+                                  {newJenjang === "purnacisya" || newJenjang === "purnapandega" ? (
+                                    <span className="text-gray-400 font-bold px-1">+</span>
+                                  ) : (
+                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                  )}
+                                  
                                   <span className={`text-xs font-medium px-2 py-1 rounded ${
-                                    newJenjang === "madya"
-                                      ? "bg-red-100 text-red-800"
-                                      : "bg-yellow-100 text-yellow-800"
+                                    newJenjang === "madya" ? "bg-red-100 text-red-800" :
+                                    newJenjang === "bhakti" ? "bg-yellow-100 text-yellow-800" : 
+                                    newJenjang === "purnacisya" ? "bg-blue-100 text-blue-800" : 
+                                    "bg-purple-100 text-purple-800"
                                   }`}>
-                                    {newJenjang === "madya" ? "Madya" : "Bhakti"}
+                                    {newJenjang === "madya" ? "Madya" : 
+                                     newJenjang === "bhakti" ? "Bhakti" : 
+                                     newJenjang === "purnacisya" ? "Purnacisya" : "Purna Pandega"}
                                   </span>
                                 </div>
                               </div>
@@ -501,7 +539,7 @@ const QuickEdit = ({ onClose, onSuccess }) => {
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={isSubmitting || selectedMembers.length === 0 || !newJenjang || !tanggalDilantik || (newJenjang === "bhakti" && Object.keys(pandegaData).filter(id => pandegaData[id]?.trim()).length !== selectedMembers.length)}
+                    disabled={isSubmitting || selectedMembers.length === 0 || !newJenjang || ((newJenjang === "madya" || newJenjang === "bhakti") && !tanggalDilantik) || (newJenjang === "bhakti" && Object.keys(pandegaData).filter(id => pandegaData[id]?.trim()).length !== selectedMembers.length)}
                     className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[140px] transition-all shadow-sm hover:shadow"
                   >
                     {isSubmitting ? (

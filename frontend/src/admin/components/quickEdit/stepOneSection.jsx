@@ -37,6 +37,10 @@ const StepOneSection = ({
           return member.jenjang === "muda";
         } else if (newJenjang === "bhakti") {
           return member.jenjang === "madya";
+        } else if (newJenjang === "purnapandega") {
+          return member.jenjang === "bhakti" && !member.isPurnaPandega;
+        } else if (newJenjang === "purnacisya") {
+          return !member.isPurnacisya;
         }
         return false;
       });
@@ -73,12 +77,16 @@ const StepOneSection = ({
 
   // Toggle selection dengan validasi jenjang
   const toggleMemberSelection = (member) => {
-    // Validasi: tidak boleh memilih muda dan madya bersamaan
-    const currentJenjangs = new Set(selectedMembers.map((m) => m.jenjang));
-    if (currentJenjangs.size > 0 && !currentJenjangs.has(member.jenjang)) {
-      setError("Tidak bisa memilih anggota dengan jenjang berbeda bersamaan");
-      setTimeout(() => setError(null), 3000);
-      return;
+    const isPurnaAction = newJenjang === "purnacisya" || newJenjang === "purnapandega";
+
+    // Validasi: tidak boleh memilih muda dan madya bersamaan, KECUALI jika aksi purna
+    if (!isPurnaAction) {
+      const currentJenjangs = new Set(selectedMembers.map((m) => m.jenjang));
+      if (currentJenjangs.size > 0 && !currentJenjangs.has(member.jenjang)) {
+        setError("Tidak bisa memilih anggota dengan jenjang berbeda bersamaan");
+        setTimeout(() => setError(null), 3000);
+        return;
+      }
     }
 
     // Jika sudah ada newJenjang, validasi jenjang untuk naik jenjang
@@ -131,18 +139,22 @@ const StepOneSection = ({
 
     const eligibleFilteredIds = eligibleFilteredMembers.map((m) => m._id);
 
-    // Validasi: cek apakah filtered members memiliki jenjang yang sama
-    const filteredJenjangs = new Set(
-      eligibleFilteredMembers.map((m) => m.jenjang)
-    );
-    const selectedJenjangs = new Set(selectedMembers.map((m) => m.jenjang));
+    const isPurnaAction = newJenjang === "purnacisya" || newJenjang === "purnapandega";
 
-    if (filteredJenjangs.size > 1 && selectedJenjangs.size === 0) {
-      setError(
-        "Tidak bisa memilih semua: terdapat anggota dengan jenjang berbeda"
+    // Validasi: cek apakah filtered members memiliki jenjang yang sama (Kecuali aksi Purna)
+    if (!isPurnaAction) {
+      const filteredJenjangs = new Set(
+        eligibleFilteredMembers.map((m) => m.jenjang)
       );
-      setTimeout(() => setError(null), 3000);
-      return;
+      const selectedJenjangs = new Set(selectedMembers.map((m) => m.jenjang));
+
+      if (filteredJenjangs.size > 1 && selectedJenjangs.size === 0) {
+        setError(
+          "Tidak bisa memilih semua: terdapat anggota dengan jenjang berbeda"
+        );
+        setTimeout(() => setError(null), 3000);
+        return;
+      }
     }
 
     // If all eligible filtered are already selected, deselect them
@@ -208,6 +220,20 @@ const StepOneSection = ({
         toJenjang: "bhakti",
         color: "yellow",
       },
+      {
+        value: "purnacisya",
+        label: "Set Purnacisya",
+        description: "Tandai sebagai sudah wisuda",
+        fromJenjang: "any",
+        color: "blue",
+      },
+      {
+        value: "purnapandega",
+        label: "Set Purna Pandega",
+        description: "Tandai usia 26+",
+        fromJenjang: "bhakti",
+        color: "purple",
+      },
     ];
 
     return options;
@@ -229,15 +255,15 @@ const StepOneSection = ({
 
     // Jika sudah ada anggota terpilih, filter yang eligible
     if (selectedMembers.length > 0) {
-      const eligibleMembers = selectedMembers.filter(
-        (member) => member.jenjang === option.fromJenjang
-      );
+      const eligibleMembers = option.fromJenjang === "any" 
+        ? selectedMembers 
+        : selectedMembers.filter(member => member.jenjang === option.fromJenjang);
 
       // Jika ada anggota yang tidak eligible, tampilkan warning
       if (eligibleMembers.length !== selectedMembers.length) {
         const ineligibleCount = selectedMembers.length - eligibleMembers.length;
         setError(
-          `${ineligibleCount} anggota tidak eligible untuk naik ke ${option.label}. Mereka akan dihapus dari selection.`
+          `${ineligibleCount} anggota tidak eligible untuk aksi ${option.label}. Mereka akan dihapus dari selection.`
         );
         setTimeout(() => setError(null), 3000);
       }
@@ -254,6 +280,9 @@ const StepOneSection = ({
       (opt) => opt.value === newJenjang
     );
     if (!selectedOption) return true;
+    
+    if (newJenjang === "purnacisya") return !member.isPurnacisya;
+    if (newJenjang === "purnapandega") return member.jenjang === "bhakti" && !member.isPurnaPandega;
 
     return member.jenjang === selectedOption.fromJenjang;
   };
@@ -261,6 +290,13 @@ const StepOneSection = ({
   // Cek apakah ada anggota dengan jenjang yang sesuai untuk opsi tertentu
   const hasEligibleMembersForOption = (option) => {
     if (!members || members.length === 0) return false;
+    
+    if (option.value === "purnacisya") {
+      return members.some((member) => !member.isPurnacisya);
+    }
+    if (option.value === "purnapandega") {
+      return members.some((member) => member.jenjang === "bhakti" && !member.isPurnaPandega);
+    }
 
     return members.some((member) => member.jenjang === option.fromJenjang);
   };
@@ -268,9 +304,10 @@ const StepOneSection = ({
   // Get button styling based on state
   const getButtonStyle = (option, isSelected) => {
     if (isSelected) {
-      return option.color === "red"
-        ? "border-red-500 bg-red-50"
-        : "border-yellow-500 bg-yellow-50";
+      return option.color === "red" ? "border-red-500 bg-red-50" :
+             option.color === "yellow" ? "border-yellow-500 bg-yellow-50" :
+             option.color === "purple" ? "border-purple-500 bg-purple-50" :
+             "border-blue-500 bg-blue-50";
     }
 
     const hasEligible = hasEligibleMembersForOption(option);
@@ -285,7 +322,10 @@ const StepOneSection = ({
   // Get text color based on state
   const getTextColor = (option, isSelected) => {
     if (isSelected) {
-      return option.color === "red" ? "text-red-700" : "text-yellow-700";
+      return option.color === "red" ? "text-red-700" : 
+             option.color === "yellow" ? "text-yellow-700" : 
+             option.color === "purple" ? "text-purple-700" :
+             "text-blue-700";
     }
 
     const hasEligible = hasEligibleMembersForOption(option);
@@ -294,7 +334,10 @@ const StepOneSection = ({
       return "text-gray-500";
     }
 
-    return option.color === "red" ? "text-red-600" : "text-yellow-600";
+    return option.color === "red" ? "text-red-600" : 
+           option.color === "yellow" ? "text-yellow-600" : 
+           option.color === "purple" ? "text-purple-600" :
+           "text-blue-600";
   };
 
   // Cek apakah dalam state idle (tidak ada yang dipilih)
@@ -387,14 +430,22 @@ const StepOneSection = ({
           {newJenjang && !isIdleState && (
             <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
               <p className="text-sm text-blue-800">
-                Menampilkan anggota dengan jenjang{" "}
-                <span className="font-medium">
-                  {newJenjang === "madya" ? "Muda" : "Madya"}
-                </span>{" "}
-                untuk dinaikkan ke{" "}
-                <span className="font-medium">
-                  {newJenjang === "madya" ? "Madya" : "Bhakti"}
-                </span>
+                {newJenjang === "purnacisya" ? (
+                  <>Menampilkan anggota dari <span className="font-medium">Semua Jenjang</span> untuk ditandai sebagai <span className="font-medium">Purnacisya</span></>
+                ) : newJenjang === "purnapandega" ? (
+                  <>Menampilkan anggota dengan jenjang <span className="font-medium">Bhakti</span> untuk ditandai sebagai <span className="font-medium">Purna Pandega</span></>
+                ) : (
+                  <>
+                    Menampilkan anggota dengan jenjang{" "}
+                    <span className="font-medium">
+                      {newJenjang === "madya" ? "Muda" : "Madya"}
+                    </span>{" "}
+                    untuk dinaikkan ke{" "}
+                    <span className="font-medium">
+                      {newJenjang === "madya" ? "Madya" : "Bhakti"}
+                    </span>
+                  </>
+                )}
               </p>
             </div>
           )}
@@ -429,7 +480,7 @@ const StepOneSection = ({
               </div>
 
               {/* Warning for mixed jenjang */}
-              {hasMixedJenjang && (
+              {hasMixedJenjang && (!newJenjang || (newJenjang !== "purnacisya" && newJenjang !== "purnapandega")) && (
                 <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
                   ⚠️ Tidak bisa memilih anggota dengan jenjang berbeda bersamaan
                 </div>
@@ -456,9 +507,12 @@ const StepOneSection = ({
                 {searchTerm
                   ? "Tidak ada anggota yang cocok dengan pencarian"
                   : newJenjang
-                  ? `Tidak ada anggota dengan jenjang ${
-                      newJenjang === "madya" ? "Muda" : "Madya"
-                    }`
+                  ? (newJenjang === "purnacisya" 
+                      ? "Tidak ada anggota yang tersedia" 
+                      : `Tidak ada anggota dengan jenjang ${
+                          newJenjang === "madya" ? "Muda" : 
+                          newJenjang === "bhakti" ? "Madya" : "Bhakti"
+                        }`)
                   : "Gunakan search untuk mencari anggota"}
               </div>
             </div>
@@ -656,7 +710,8 @@ const StepOneSection = ({
           </div>
 
           {/* Tanggal Dilantik */}
-          <div className="mb-6">
+          {(newJenjang === "" || newJenjang === "madya" || newJenjang === "bhakti") && (
+            <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Tanggal Dilantik <span className="text-red-500">*</span>
             </label>
@@ -684,6 +739,7 @@ const StepOneSection = ({
               Tanggal ketika anggota dilantik ke jenjang baru
             </p>
           </div>
+          )}
         </div>
       </div>
     </div>

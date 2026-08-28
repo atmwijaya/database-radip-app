@@ -46,6 +46,14 @@ const memberSchema = new mongoose.Schema({
     type: String, 
     default: "-" 
   },
+  isPurnacisya: {
+    type: Boolean,
+    default: false
+  },
+  isPurnaPandega: {
+    type: Boolean,
+    default: false
+  },
   createdAt: { 
     type: Date, 
     default: Date.now 

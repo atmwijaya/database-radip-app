@@ -127,6 +127,8 @@ const EditAnggota = () => {
     displayTanggalLahir: "",
     dateValue: "",
     pandega: "",
+    isPurnacisya: false,
+    isPurnaPandega: false,
   });
 
   const [errors, setErrors] = useState({
@@ -248,6 +250,8 @@ const EditAnggota = () => {
           displayTanggalLahir: tanggalLahir,
           dateValue: dateValue,
           pandega: item.pandega === "-" ? "" : item.pandega || "",
+          isPurnacisya: item.isPurnacisya || false,
+          isPurnaPandega: item.isPurnaPandega || false,
         };
 
         console.log("Form data to set:", newFormData);
@@ -450,6 +454,8 @@ const EditAnggota = () => {
         til: til,
         pandega: formData.pandega || "-",
         tanggalLahir: tanggalLahirForDB,
+        isPurnacisya: formData.isPurnacisya,
+        isPurnaPandega: formData.isPurnaPandega,
       };
       await queryClient.cancelQueries(["members", "admin"]);
       await queryClient.cancelQueries(["members", "public"]);
@@ -901,6 +907,32 @@ const EditAnggota = () => {
                       className="w-full p-3 border border-gray-300 rounded-lg"
                       required
                     />
+                  </div>
+                </div>
+
+                {/* Row 7: Status Khusus */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-4">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="isPurnacisya"
+                        checked={formData.isPurnacisya}
+                        onChange={(e) => setFormData({ ...formData, isPurnacisya: e.target.checked })}
+                        className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="text-gray-700 font-medium">Purnacisya (Wisuda)</span>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="isPurnaPandega"
+                        checked={formData.isPurnaPandega}
+                        onChange={(e) => setFormData({ ...formData, isPurnaPandega: e.target.checked })}
+                        className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="text-gray-700 font-medium">Purna Pandega (Usia &gt; 25 Tahun)</span>
+                    </label>
                   </div>
                 </div>
 

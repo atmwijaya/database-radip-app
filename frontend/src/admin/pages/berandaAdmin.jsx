@@ -103,8 +103,10 @@ const BerandaAdmin = () => {
     const angkatanMap = new Map();
     const jenjangMap = new Map();
     
-    for (let i = 0; i < members.length; i++) {
-      const member = members[i];
+    const filteredMembers = members.filter(m => !m.isPurnaPandega);
+
+    for (let i = 0; i < filteredMembers.length; i++) {
+      const member = filteredMembers[i];
       const year = member.angkatan;
       const jenjang = member.jenjang || 'muda';
       
@@ -144,13 +146,13 @@ const BerandaAdmin = () => {
       ? jenjangData.sort((a, b) => b.year - a.year)
       : jenjangData.sort((a, b) => b.total - a.total);
 
-    const totalAnggota = members.length;
+    const totalAnggota = filteredMembers.length;
 
     // Hitung total per jenjang
     const totalJenjang = {
-      muda: members.filter(m => (m.jenjang || 'muda') === 'muda').length,
-      madya: members.filter(m => m.jenjang === 'madya').length,
-      bhakti: members.filter(m => m.jenjang === 'bhakti').length
+      muda: filteredMembers.filter(m => (m.jenjang || 'muda') === 'muda').length,
+      madya: filteredMembers.filter(m => m.jenjang === 'madya').length,
+      bhakti: filteredMembers.filter(m => m.jenjang === 'bhakti').length
     };
 
     return { 

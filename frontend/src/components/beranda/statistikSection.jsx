@@ -66,9 +66,10 @@ const StatistikSection = () => {
     const angkatanDetailsMap = new Map();
     let latestMember = null;
     let latestDate = null;
+    const filteredMembers = members.filter(m => !m.isPurnaPandega);
 
-    for (let i = 0; i < members.length; i++) {
-      const member = members[i];
+    for (let i = 0; i < filteredMembers.length; i++) {
+      const member = filteredMembers[i];
       const year = member.angkatan;
       const jenjang = member.jenjang || "muda";
 
@@ -123,9 +124,9 @@ const StatistikSection = () => {
       .slice(0, 8);
 
     const totalJenjang = {
-      muda: members.filter((m) => (m.jenjang || "muda") === "muda").length,
-      madya: members.filter((m) => m.jenjang === "madya").length,
-      bhakti: members.filter((m) => m.jenjang === "bhakti").length,
+      muda: filteredMembers.filter((m) => (m.jenjang || "muda") === "muda").length,
+      madya: filteredMembers.filter((m) => m.jenjang === "madya").length,
+      bhakti: filteredMembers.filter((m) => m.jenjang === "bhakti").length,
     };
 
     const jenjangPieData = [
@@ -155,7 +156,7 @@ const StatistikSection = () => {
     return {
       angkatanData,
       detailedAngkatanData,
-      totalAnggota: members.length,
+      totalAnggota: filteredMembers.length,
       totalJenjang,
       jenjangPieData,
       lastAddedMember: latestMember,

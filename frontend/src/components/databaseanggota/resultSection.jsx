@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, X, Calendar } from "lucide-react";
+import { Search, X, Calendar, GraduationCap } from "lucide-react";
 
 const ResultsSection = ({
   filteredMembers,
@@ -88,7 +88,11 @@ const ResultsSection = ({
                     >
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
-                          <div className="text-sm font-medium text-gray-900">{member.nama}</div>
+                          <div className={`text-sm font-medium flex items-center gap-1 ${member.isPurnacisya ? 'text-yellow-600' : 'text-gray-900'}`}>
+                            {member.nama}
+                            {member.isPurnacisya && <GraduationCap className="w-4 h-4 text-yellow-600" title="Purnacisya" />}
+                            {member.isPurnaPandega && <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-1.5 py-0.5 rounded leading-none" title="Purna Pandega">26+</span>}
+                          </div>
                           {member.pandega && (
                             <div className="text-xs text-gray-500 mt-1">
                               Pandega: {member.pandega}
@@ -155,7 +159,11 @@ const ResultsSection = ({
                   {/* Header */}
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 text-base">{member.nama}</h4>
+                      <h4 className={`font-semibold text-base flex items-center gap-1 flex-wrap ${member.isPurnacisya ? 'text-yellow-600' : 'text-gray-900'}`}>
+                        {member.nama}
+                        {member.isPurnacisya && <GraduationCap className="w-4 h-4 text-yellow-600" title="Purnacisya" />}
+                        {member.isPurnaPandega && <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-1.5 py-0.5 rounded leading-none" title="Purna Pandega">26+</span>}
+                      </h4>
                       <div className="flex items-center mt-1 space-x-2">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${

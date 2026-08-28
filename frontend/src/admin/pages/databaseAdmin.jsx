@@ -6,6 +6,7 @@ import Footer from "../../components/footer";
 import { checkTokenExpiration } from "../../../../backend/utils/auth";
 import ImportAnggotaModal from "./importAnggotaModal";
 import QuickEdit from "./quickEdit";
+import { GraduationCap } from "lucide-react";
 
 const monthNames = [
   "Januari",
@@ -1026,8 +1027,10 @@ const DatabaseAdmin = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-900">
+                            <span className={`text-sm font-medium flex items-center gap-1 ${item.isPurnacisya ? 'text-yellow-600' : 'text-gray-900'}`}>
                               {item.nama}
+                              {item.isPurnacisya && <GraduationCap className="w-4 h-4 text-yellow-600" title="Purnacisya" />}
+                              {item.isPurnaPandega && <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-1.5 py-0.5 rounded leading-none" title="Purna Pandega">26+</span>}
                             </span>
                             <div className="flex items-center mt-1">
                               <span
@@ -1116,8 +1119,12 @@ const DatabaseAdmin = () => {
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <div className="flex items-center space-x-2 mb-1">
-                      <h3 className="font-medium text-gray-900">{item.nama}</h3>
+                    <div className="flex items-center space-x-2 mb-1 flex-wrap">
+                      <h3 className={`font-medium flex items-center gap-1 flex-wrap ${item.isPurnacisya ? 'text-yellow-600' : 'text-gray-900'}`}>
+                        {item.nama}
+                        {item.isPurnacisya && <GraduationCap className="w-4 h-4 text-yellow-600" title="Purnacisya" />}
+                        {item.isPurnaPandega && <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-1.5 py-0.5 rounded leading-none" title="Purna Pandega">26+</span>}
+                      </h3>
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                           item.jenjang === "muda"
